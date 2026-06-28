@@ -1,0 +1,2642 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediScan AI - Report Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tesseract.js for OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Marked for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- html2pdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --accent-color: #10b981;
+            --danger-color: #ef4444;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* =============================================
+           MOBILE-FIRST RESPONSIVE CSS
+           ============================================= */
+
+        /* Tablet & large mobile (≤ 768px) */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header {
+                margin-bottom: 1.5rem;
+            }
+
+            .logo h1 {
+                font-size: 1.8rem;
+            }
+
+            .subtitle {
+                font-size: 0.9rem;
+            }
+
+            .glass-panel {
+                padding: 1.2rem;
+                border-radius: 12px;
+            }
+
+            /* API key row stacks vertically */
+            .api-key-container div[style*="display: flex"] {
+                flex-direction: column !important;
+            }
+
+            #saveKeyBtn {
+                width: 100% !important;
+            }
+
+            /* Upload zone */
+            .upload-section {
+                min-height: 220px;
+                padding: 1.5rem 1rem;
+            }
+
+            .upload-content h2 {
+                font-size: 1.2rem;
+            }
+
+            .upload-buttons {
+                flex-direction: column;
+                width: 100%;
+                gap: 0.75rem;
+            }
+
+            .upload-btn-wrapper {
+                width: 100%;
+            }
+
+            /* Preview gallery — 3 per row on tablet */
+            #previewGallery {
+                gap: 0.6rem;
+            }
+
+            .preview-item {
+                width: calc(33.33% - 0.6rem);
+                height: 120px;
+            }
+
+            /* Analyze button */
+            .action-bar button {
+                width: 100% !important;
+                max-width: 100% !important;
+                font-size: 1.05rem !important;
+                padding: 0.9rem !important;
+            }
+
+            /* Results grid — single column */
+            .results-grid {
+                grid-template-columns: 1fr;
+                gap: 1.2rem;
+            }
+
+            /* Result panels: auto height, not fixed 600px */
+            .result-panel {
+                height: auto !important;
+                min-height: 320px;
+            }
+
+            .content-area {
+                min-height: 260px;
+                max-height: 60vh;
+            }
+
+            /* Tab header: stack title above tabs */
+            .panel-header-tabs {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 0.6rem !important;
+            }
+
+            /* Tab buttons: fill full width on mobile */
+            .tab-buttons-container {
+                width: 100% !important;
+                justify-content: stretch !important;
+            }
+
+            .tab-btn {
+                flex: 1;
+                justify-content: center;
+                font-size: 0.78rem !important;
+                padding: 6px 8px !important;
+            }
+
+            /* Download actions: full-width stack */
+            #downloadActions {
+                flex-direction: column !important;
+                gap: 0.6rem !important;
+            }
+
+            #downloadActions button {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+        }
+
+        /* Small phones (≤ 480px) */
+        @media (max-width: 480px) {
+            .logo {
+                gap: 0.5rem;
+            }
+
+            .logo svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .logo h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 0.8rem;
+            }
+
+            .glass-panel {
+                padding: 1rem;
+                border-radius: 10px;
+            }
+
+            .upload-section {
+                min-height: 180px;
+            }
+
+            /* Preview gallery — 2 per row on small phones */
+            .preview-item {
+                width: calc(50% - 0.5rem);
+                height: 110px;
+            }
+
+            .tab-btn {
+                font-size: 0.72rem !important;
+                padding: 5px 4px !important;
+                gap: 3px !important;
+            }
+
+            /* Language toggle pill */
+            #btnLangEn, #btnLangMr {
+                padding: 5px 10px !important;
+                font-size: 0.8rem !important;
+            }
+
+            .content-area {
+                font-size: 0.88rem;
+                max-height: 55vh;
+            }
+
+            /* Scrollbar thinner on mobile */
+            ::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .action-bar {
+                position: sticky;
+                bottom: 1rem;
+                z-index: 100;
+            }
+
+            .action-bar button {
+                box-shadow: 0 4px 24px rgba(16, 185, 129, 0.5) !important;
+            }
+        }
+
+
+
+        /* Background Effects */
+        .background-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+            top: -100px;
+            left: -100px;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
+            bottom: -50px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(50px, 50px) scale(1.1);
+            }
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .logo h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Components */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--glass-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        .config-section {
+            margin-bottom: 2rem;
+            animation: fadeIn 1s ease-out 0.2s both;
+        }
+
+        .api-key-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .api-key-container label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .api-key-input {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--panel-border);
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+            -webkit-text-security: disc;
+        }
+
+        .api-key-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .api-key-container small {
+            color: var(--accent-color);
+            font-size: 0.8rem;
+        }
+
+        .upload-section {
+            text-align: center;
+            border: 2px dashed var(--panel-border);
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 1s ease-out 0.4s both;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section.dragover {
+            border-color: var(--primary-color);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .upload-icon {
+            width: 48px;
+            height: 48px;
+            color: var(--primary-color);
+        }
+
+        .upload-content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .upload-content p {
+            color: var(--text-secondary);
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            flex: 1;
+        }
+
+        .upload-btn-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            height: 100%;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--panel-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #previewGallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .preview-item {
+            position: relative;
+            width: 120px;
+            height: 160px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-item .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .preview-item .remove-btn:hover {
+            background: var(--danger-color);
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .action-bar button {
+            padding: 1rem 3rem;
+            font-size: 1.1rem;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @media (min-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .result-panel {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .result-panel h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .result-panel.highlight h3 {
+            color: var(--accent-color);
+        }
+
+        .content-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+
+        /* Markdown Styles inside content-area */
+        .content-area h1,
+        .content-area h2,
+        .content-area h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .content-area strong {
+            color: #fff;
+        }
+
+        .content-area ul {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .content-area p {
+            margin-bottom: 1rem;
+        }
+
+        /* Custom coloring based on text content (handled in JS/CSS) */
+        .abnormal {
+            color: var(--danger-color);
+            font-weight: bold;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .important {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        /* Narrative Story Badges Styling */
+        .abnormal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.88em;
+            font-weight: 600;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.15);
+            margin: 3px 6px;
+            vertical-align: middle;
+            animation: pulse-red-border 2s infinite alternate;
+        }
+
+        .important-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 0.88em;
+            font-weight: 600;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+            margin: 3px 6px;
+            vertical-align: middle;
+        }
+
+        @keyframes pulse-red-border {
+            0% {
+                box-shadow: 0 0 8px rgba(239, 68, 68, 0.15);
+                border-color: rgba(239, 68, 68, 0.3);
+            }
+            100% {
+                box-shadow: 0 0 16px rgba(239, 68, 68, 0.45);
+                border-color: rgba(239, 68, 68, 0.7);
+            }
+        }
+
+        /* Tab Switcher Styles */
+        .tab-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            outline: none;
+        }
+
+        .tab-btn:hover:not(.active-structured):not(.active-story):not(.active-summary) {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tab-btn.active-structured {
+            background: var(--primary-color) !important;
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+        }
+
+        .tab-btn.active-story {
+            background: var(--accent-color) !important;
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+        }
+
+        .tab-btn.active-summary {
+            background: #8b5cf6 !important; /* Premium Violet */
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3) !important;
+        }
+
+        /* Loader */
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            animation: pulse 2s infinite;
+        }
+
+        .pulse.analyzing {
+            background-color: var(--accent-color);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-elements">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+                <h1>MediScan AI</h1>
+            </div>
+            <p class="subtitle">Intelligent Medical Report Extraction & Analysis</p>
+        </header>
+
+        <main>
+            <section class="config-section glass-panel">
+                <details id="apiConfigDetails" open>
+                    <summary style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: 600; color: var(--text-primary); user-select: none; list-style: none;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            ⚙️ API Key Settings (Custom Override Option)
+                        </span>
+                        <span class="accordion-arrow" style="font-size: 0.8rem; opacity: 0.7;">[Click to Open/Close]</span>
+                    </summary>
+                    <div class="api-key-container" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <label for="apiKey">Google Gemini API Key (Required for Analysis)</label>
+                        <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                            <div style="position: relative; flex-grow: 1; display: flex; align-items: center;">
+                                <input type="text" id="apiKey" class="api-key-input" placeholder="Enter your API key here..."
+                                    autocomplete="off" name="gemini_api_key_input" data-lpignore="true" data-1pignore="true" spellcheck="false"
+                                    style="width: 100%; padding-right: 40px; box-sizing: border-box;">
+                                <button type="button" id="toggleKeyVisibility" style="position: absolute; right: 10px; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; height: 100%; width: 30px; user-select: none;">👁️</button>
+                            </div>
+                            <button type="button" class="btn-primary" id="saveKeyBtn" style="padding: 0.5rem 1rem; flex-shrink: 0;">Save Key</button>
+                        </div>
+                        <small id="keyStatus" style="color: var(--accent-color);">If the default key is rate-limited, you can paste your own key here to override it instantly!</small>
+                    </div>
+                </details>
+            </section>
+
+            <section class="upload-section glass-panel" id="dropZone">
+                <div class="upload-content" id="uploadPlaceholder">
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <h2>Upload Medical Reports</h2>
+                    <p>Take a photo directly or browse your files</p>
+
+                    <div class="upload-buttons">
+                        <div class="upload-btn-wrapper">
+                            <button class="btn-primary" style="width: 100%;">📸 Take Photo</button>
+                            <input type="file" id="cameraInput" accept="image/*" capture="environment">
+                        </div>
+                        <div class="upload-btn-wrapper">
+                            <button class="btn-secondary" style="width: 100%;">📁 Browse Files</button>
+                            <input type="file" id="fileInput" accept="image/*" multiple>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1rem; text-align: center;">
+                        <em>Tip: You can add as many photos as you want! If your phone limits you to 10 photos at a time, just click "Browse Files" or "Take Another Photo" again to add more.</em>
+                    </p>
+                </div>
+
+                <div id="previewGallery" class="hidden">
+                    <!-- Images will be injected here -->
+                </div>
+                <div id="addMoreBtnContainer" class="hidden"
+                    style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; justify-content: center; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <div class="upload-btn-wrapper">
+                        <button class="btn-primary" style="width: 100%; font-size: 1.1rem; padding: 1rem;">📸 Take
+                            Another Photo</button>
+                        <input type="file" id="addCameraInput" accept="image/*" capture="environment">
+                    </div>
+                    <div class="upload-btn-wrapper">
+                        <button class="btn-secondary" style="width: 100%;">📁 Browse More Files</button>
+                        <input type="file" id="addFileInput" accept="image/*" multiple>
+                    </div>
+                    <button id="clearGalleryBtn" class="btn-secondary"
+                        style="width: 100%; border-color: var(--danger-color); color: var(--danger-color); padding: 0.8rem; cursor: pointer; border-radius: 8px; font-weight: 600; background: transparent;">🧹
+                        Clear & Start Over</button>
+                </div>
+            </section>
+
+            <div class="action-bar" id="actionBar" style="margin-top: 2rem; display: flex; justify-content: center; width: 100%;">
+                <button id="analyzeBtn" class="btn-primary"
+                    style="width: 100%; max-width: 400px; font-size: 1.2rem; padding: 1rem; background: var(--accent-color); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 0.5rem; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
+                    <span class="btn-text">✅ Done! Extract & Analyze</span>
+                    <span class="loader hidden"></span>
+                </button>
+            </div>
+
+            <div class="results-grid" id="resultsArea">
+                <section class="result-panel glass-panel">
+                    <h3>Extracted Text (OCR)</h3>
+                    <div id="ocrResult" class="content-area"></div>
+                </section>
+
+                <section class="result-panel glass-panel highlight" style="display: flex; flex-direction: column;">
+                    <div class="panel-header-tabs" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem;">
+                        <h3 id="analysisPanelTitle" style="margin: 0; border: none; padding: 0; font-size: 1.2rem; color: var(--primary-color);">AI Analysis & Findings</h3>
+                        <div class="tab-buttons-container" style="display: flex; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--panel-border); border-radius: 8px; padding: 4px; gap: 4px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);">
+                            <button id="tabStructured" class="tab-btn active-structured" style="border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                📊 Structured Report
+                            </button>
+                            <button id="tabStory" class="tab-btn" style="border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                📖 Clinical Story
+                            </button>
+                            <button id="tabPatientSummary" class="tab-btn" style="border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                ❤️ Patient Summary
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="status-indicator">
+                        <span class="pulse"></span>
+                        <span id="analysisStatus">Awaiting extraction...</span>
+                    </div>
+                    <div id="analysisResult" class="content-area" style="flex-grow: 1;"></div>
+                    <div id="storyResult" class="content-area hidden" style="flex-grow: 1;"></div>
+                    <div id="patientSummaryResult" class="content-area hidden" style="flex-grow: 1; display: flex; flex-direction: column; gap: 1rem;">
+                        <!-- Language Toggle Buttons (Mobile friendly wrap) -->
+                        <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 1rem; width: 100%;">
+                            <span style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem; font-weight: 600;">🗣️ Select Summary Language:</span>
+                            <div style="display: flex; flex-wrap: wrap; justify-content: center; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--panel-border); border-radius: 16px; padding: 6px; gap: 6px; width: 100%;">
+                                <button id="btnLangEn" type="button" style="border: none; padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; background: var(--primary-color); color: white; box-shadow: 0 2px 6px rgba(59,130,246,0.3); flex-grow: 1; min-width: 100px;">
+                                    🇬🇧 English
+                                </button>
+                                <button id="btnLangMr" type="button" style="border: none; padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; background: transparent; color: var(--text-secondary); flex-grow: 1; min-width: 100px;">
+                                    🚩 मराठी
+                                </button>
+                                <button id="btnLangKn" type="button" style="border: none; padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; background: transparent; color: var(--text-secondary); flex-grow: 1; min-width: 100px;">
+                                    🟡 ಕನ್ನಡ
+                                </button>
+                                <button id="btnLangHi" type="button" style="border: none; padding: 8px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; background: transparent; color: var(--text-secondary); flex-grow: 1; min-width: 100px;">
+                                    🇮🇳 हिन्दी
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- English Summary Card -->
+                        <div id="summaryCardEn" style="padding: 1rem; border-radius: 12px; background: rgba(30, 41, 59, 0.2); border: 1px solid var(--panel-border); line-height: 1.6; min-height: 350px;">
+                            <!-- English content injected here -->
+                        </div>
+                        
+                        <!-- Marathi Summary Card -->
+                        <div id="summaryCardMr" class="hidden" style="padding: 1rem; border-radius: 12px; background: rgba(30, 41, 59, 0.2); border: 1px solid var(--panel-border); line-height: 1.6; font-size: 1.05rem; min-height: 350px;">
+                            <!-- Marathi content injected here -->
+                        </div>
+
+                        <!-- Kannada Summary Card -->
+                        <div id="summaryCardKn" class="hidden" style="padding: 1rem; border-radius: 12px; background: rgba(30, 41, 59, 0.2); border: 1px solid var(--panel-border); line-height: 1.6; font-size: 1.05rem; min-height: 350px;">
+                            <!-- Kannada content injected here -->
+                        </div>
+
+                        <!-- Hindi Summary Card -->
+                        <div id="summaryCardHi" class="hidden" style="padding: 1rem; border-radius: 12px; background: rgba(30, 41, 59, 0.2); border: 1px solid var(--panel-border); line-height: 1.6; font-size: 1.05rem; min-height: 350px;">
+                            <!-- Hindi content injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Download bar for Structured Report tab -->
+                    <div id="downloadActions" class="hidden"
+                        style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: flex-end; width: 100%;">
+                        <!-- Structured report actions -->
+                        <div id="dlBarStructured" style="display:flex; flex-wrap:wrap; gap:0.6rem; width:100%; justify-content:flex-end;">
+                            <button id="waStructuredBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#25D366; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(37,211,102,0.3);">📲 WhatsApp</button>
+                            <button id="emailStructuredBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#ea4335; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(234,67,53,0.3);">✉️ Email</button>
+                            <button id="pdfStructuredBtn" class="btn-primary" style="padding:0.6rem 1.2rem; background:#3b82f6;">⬇️ PDF</button>
+                            <button id="wordStructuredBtn" class="btn-secondary" style="padding:0.6rem 1.2rem;">⬇️ Word</button>
+                        </div>
+                        <!-- Clinical Story actions -->
+                        <div id="dlBarStory" style="display:none; flex-wrap:wrap; gap:0.6rem; width:100%; justify-content:flex-end;">
+                            <button id="waStoryBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#25D366; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(37,211,102,0.3);">📲 WhatsApp</button>
+                            <button id="emailStoryBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#ea4335; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(234,67,53,0.3);">✉️ Email</button>
+                            <button id="pdfStoryBtn" class="btn-primary" style="padding:0.6rem 1.2rem; background:#10b981;">⬇️ PDF</button>
+                            <button id="wordStoryBtn" class="btn-secondary" style="padding:0.6rem 1.2rem;">⬇️ Word</button>
+                        </div>
+                        <!-- Patient Summary actions -->
+                        <div id="dlBarSummary" style="display:none; flex-wrap:wrap; gap:0.6rem; width:100%; justify-content:flex-end;">
+                            <button id="waSummaryBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#25D366; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(37,211,102,0.3);">📲 WhatsApp</button>
+                            <button id="emailSummaryBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#ea4335; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(234,67,53,0.3);">✉️ Email</button>
+                            <button id="pdfAllBtn" class="btn-primary" style="padding:0.6rem 1rem; background:#8b5cf6; color:white; border:none; cursor:pointer; border-radius:8px; font-weight:600; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(139,92,246,0.3);">⬇️ Full PDF (All Sections)</button>
+                        </div>
+                        <!-- Clear button always visible -->
+                        <button id="clearAllBtn" class="btn-secondary" style="padding:0.6rem 1rem; border-color:var(--danger-color); color:var(--danger-color); cursor:pointer; border-radius:8px; font-weight:600; background:transparent;">🧹 Clear</button>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🔑 HARDCODE YOUR API KEY HERE
+        // Paste your API key between the quotes below to make it permanent for Netlify.
+        // Once you do this, the API key input box will disappear for your users.
+        // ==========================================
+        const DEFAULT_API_KEY = "AIzaSyB_tXJpuecllw3CqqqdB2DTEbIbD4L47oQ";
+        // Additional backup keys — rotated automatically when one hits quota
+        const DEFAULT_API_KEY_POOL = [
+            "AIzaSyB_tXJpuecllw3CqqqdB2DTEbIbD4L47oQ",
+            "AIzaSyAq05lwkp2tXa1bMvwRnHJPlA4J3xcwBHI",
+            "AIzaSyBgNhz7n7nFGJW1A1nMAj5aTAsrIdZz6C8",
+            "AIzaSyC0sWcxXBq-dYTDsCRbOxF1ITh_zmKlJOI"
+        ];
+
+        // Robust error-tolerant Storage wrapper with automatic URL parameters, hash, in-memory, sessionStorage, and cookie fallbacks
+        const safeStorage = {
+            _backup: {},
+            getItem(key) {
+                // 1. URL search parameters or URL hash (highest priority for sandboxed/local environments)
+                if (key === 'mediscan_gemini_api_key') {
+                    try {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const queryKey = urlParams.get('key');
+                        if (queryKey) return queryKey;
+
+                        const hashMatch = window.location.hash.match(/[#&?]key=([^&]+)/);
+                        if (hashMatch) {
+                            const dec = decodeURIComponent(hashMatch[1]);
+                            if (dec) return dec;
+                        }
+                    } catch (e) {
+                        console.warn("URL key parsing failed:", e);
+                    }
+                }
+
+                // 2. Standard Local Storage
+                try {
+                    const val = localStorage.getItem(key);
+                    if (val !== null) return val;
+                } catch (e) {
+                    console.warn("localStorage.getItem is blocked, trying fallbacks:", e);
+                }
+
+                // 3. Standard Session Storage
+                try {
+                    const val = sessionStorage.getItem(key);
+                    if (val !== null) return val;
+                } catch (e) {}
+
+                // 4. Cookies
+                try {
+                    const match = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
+                    if (match) return decodeURIComponent(match[2]);
+                } catch (e) {}
+
+                // 5. In-Memory Backup
+                return this._backup[key] || null;
+            },
+            setItem(key, value) {
+                // 1. URL Hash fallback for sandbox persistence
+                if (key === 'mediscan_gemini_api_key') {
+                    try {
+                        const currentHash = window.location.hash;
+                        if (currentHash.includes('key=')) {
+                            window.location.hash = currentHash.replace(/key=[^&]*/, `key=${encodeURIComponent(value)}`);
+                        } else {
+                            const prefix = currentHash ? `${currentHash}&` : '#';
+                            window.location.hash = `${prefix}key=${encodeURIComponent(value)}`;
+                        }
+                    } catch (e) {
+                        console.warn("Failed to set URL hash:", e);
+                    }
+                }
+
+                // 2. Local Storage
+                try {
+                    localStorage.setItem(key, value);
+                } catch (e) {
+                    console.warn("localStorage.setItem is blocked, saving to fallbacks:", e);
+                }
+
+                // 3. Session Storage
+                try {
+                    sessionStorage.setItem(key, value);
+                } catch (e) {}
+
+                // 4. Cookies
+                try {
+                    document.cookie = key + "=" + encodeURIComponent(value) + "; max-age=31536000; path=/; SameSite=Lax";
+                } catch (e) {}
+
+                // 5. In-Memory Backup
+                this._backup[key] = value;
+                return true;
+            },
+            removeItem(key) {
+                // 1. Remove from URL Hash
+                if (key === 'mediscan_gemini_api_key') {
+                    try {
+                        const currentHash = window.location.hash;
+                        if (currentHash.includes('key=')) {
+                            let newHash = currentHash.replace(/key=[^&]*/, '').replace(/&&+/, '&').replace(/#&/, '#');
+                            if (newHash === '#' || newHash === '') {
+                                history.replaceState("", document.title, window.location.pathname + window.location.search);
+                            } else {
+                                window.location.hash = newHash;
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                // 2. Local Storage
+                try {
+                    localStorage.removeItem(key);
+                } catch (e) {
+                    console.warn("localStorage.removeItem is blocked, removing from fallbacks:", e);
+                }
+
+                // 3. Session Storage
+                try {
+                    sessionStorage.removeItem(key);
+                } catch (e) {}
+
+                // 4. Cookies
+                try {
+                    document.cookie = key + "=; max-age=0; path=/; SameSite=Lax";
+                } catch (e) {}
+
+                // 5. In-Memory Backup
+                delete this._backup[key];
+                return true;
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('dropZone');
+            const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+            const previewGallery = document.getElementById('previewGallery');
+            const addMoreBtnContainer = document.getElementById('addMoreBtnContainer');
+
+            const fileInput = document.getElementById('fileInput');
+            const cameraInput = document.getElementById('cameraInput');
+            const addFileInput = document.getElementById('addFileInput');
+            const addCameraInput = document.getElementById('addCameraInput');
+
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const resultsArea = document.getElementById('resultsArea');
+            const ocrResult = document.getElementById('ocrResult');
+            const analysisResult = document.getElementById('analysisResult');
+            const storyResult = document.getElementById('storyResult');
+            const tabStructured = document.getElementById('tabStructured');
+            const tabStory = document.getElementById('tabStory');
+            const tabPatientSummary = document.getElementById('tabPatientSummary');
+            const patientSummaryResult = document.getElementById('patientSummaryResult');
+            const summaryCardEn = document.getElementById('summaryCardEn');
+            const summaryCardMr = document.getElementById('summaryCardMr');
+            const summaryCardKn = document.getElementById('summaryCardKn');
+            const summaryCardHi = document.getElementById('summaryCardHi');
+            const btnLangEn = document.getElementById('btnLangEn');
+            const btnLangMr = document.getElementById('btnLangMr');
+            const btnLangKn = document.getElementById('btnLangKn');
+            const btnLangHi = document.getElementById('btnLangHi');
+            const apiKeyInput = document.getElementById('apiKey');
+            const saveKeyBtn = document.getElementById('saveKeyBtn');
+            const toggleKeyVisibility = document.getElementById('toggleKeyVisibility');
+            const keyStatus = document.getElementById('keyStatus');
+            const analysisStatus = document.getElementById('analysisStatus');
+            const pulseIndicator = document.querySelector('.pulse');
+            const downloadActions = document.getElementById('downloadActions');
+            const clearAllBtn = document.getElementById('clearAllBtn');
+            const clearGalleryBtn = document.getElementById('clearGalleryBtn');
+
+            // Declare both savedKey and actionBar at the top to prevent browser ReferenceErrors
+            const savedKey = safeStorage.getItem('mediscan_gemini_api_key');
+            const actionBar = document.getElementById('actionBar');
+
+            // If a hardcoded key is provided, hide the API key configuration panel entirely
+            // so that patients/users on mobile links are not asked for a key.
+            const apiConfigDetails = document.getElementById('apiConfigDetails');
+            if (apiConfigDetails) {
+                if (DEFAULT_API_KEY !== "PASTE_YOUR_API_KEY_HERE" && DEFAULT_API_KEY.length > 10) {
+                    apiConfigDetails.removeAttribute('open');
+                    apiConfigDetails.closest('.config-section').style.display = 'none';
+                } else {
+                    apiConfigDetails.setAttribute('open', '');
+                }
+            }
+
+
+            let currentFiles = [];
+            let rawAnalysisText = "";
+
+            // Tab switching logic
+            function selectStructuredTab() {
+                tabStructured.classList.add('active-structured');
+                tabStory.classList.remove('active-story');
+                if (tabPatientSummary) tabPatientSummary.classList.remove('active-summary');
+                analysisResult.style.display = '';
+                analysisResult.classList.remove('hidden');
+                storyResult.style.display = 'none';
+                if (patientSummaryResult) patientSummaryResult.style.display = 'none';
+            }
+
+            function selectStoryTab() {
+                tabStory.classList.add('active-story');
+                tabStructured.classList.remove('active-structured');
+                if (tabPatientSummary) tabPatientSummary.classList.remove('active-summary');
+                analysisResult.style.display = 'none';
+                storyResult.style.display = '';
+                storyResult.classList.remove('hidden');
+                if (patientSummaryResult) patientSummaryResult.style.display = 'none';
+            }
+
+            function selectPatientSummaryTab() {
+                if (tabPatientSummary) tabPatientSummary.classList.add('active-summary');
+                tabStructured.classList.remove('active-structured');
+                tabStory.classList.remove('active-story');
+                analysisResult.style.display = 'none';
+                storyResult.style.display = 'none';
+                if (patientSummaryResult) {
+                    patientSummaryResult.style.display = 'flex';
+                    patientSummaryResult.classList.remove('hidden');
+                }
+                // Always reset to English tab when opening Patient Summary
+                selectLanguage(btnLangEn);
+            }
+
+            if (tabStructured) tabStructured.addEventListener('click', selectStructuredTab);
+            if (tabStory) tabStory.addEventListener('click', selectStoryTab);
+            if (tabPatientSummary) tabPatientSummary.addEventListener('click', selectPatientSummaryTab);
+
+            // Patient Summary Language Switchers
+            const languages = [
+                { btn: btnLangEn, card: summaryCardEn, color: 'var(--primary-color)' },
+                { btn: btnLangMr, card: summaryCardMr, color: '#8b5cf6' }, // Violet
+                { btn: btnLangKn, card: summaryCardKn, color: '#f59e0b' }, // Amber
+                { btn: btnLangHi, card: summaryCardHi, color: '#ec4899' }  // Pink
+            ];
+
+            function selectLanguage(selectedBtn) {
+                languages.forEach(lang => {
+                    if (!lang.btn || !lang.card) return;
+                    if (lang.btn === selectedBtn) {
+                        lang.btn.style.background = lang.color;
+                        lang.btn.style.color = 'white';
+                        lang.btn.style.boxShadow = `0 2px 6px ${lang.color}40`;
+                        lang.card.classList.remove('hidden');
+                    } else {
+                        lang.btn.style.background = 'transparent';
+                        lang.btn.style.color = 'var(--text-secondary)';
+                        lang.btn.style.boxShadow = 'none';
+                        lang.card.classList.add('hidden');
+                    }
+                });
+            }
+
+            if (btnLangEn) btnLangEn.addEventListener('click', () => selectLanguage(btnLangEn));
+            if (btnLangMr) btnLangMr.addEventListener('click', () => selectLanguage(btnLangMr));
+            if (btnLangKn) btnLangKn.addEventListener('click', () => selectLanguage(btnLangKn));
+            if (btnLangHi) btnLangHi.addEventListener('click', () => selectLanguage(btnLangHi));
+
+            function restoreEmptyPlaceholders() {
+                if (ocrResult) {
+                    ocrResult.innerHTML = `
+                        <div class="empty-state-placeholder" style="text-align: center; padding: 3rem 1rem; opacity: 0.6; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                            <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📝</span>
+                            <p style="margin: 0; font-weight: 600; font-size: 1.1rem; color: var(--text-primary);">Awaiting Medical Report...</p>
+                            <small style="display: block; margin-top: 0.5rem; color: var(--text-secondary);">Please take a photo or browse medical report images above to start.</small>
+                        </div>
+                    `;
+                }
+                
+                const aiPlaceholder = `
+                    <div class="empty-state-placeholder" style="text-align: center; padding: 3rem 1rem; opacity: 0.6; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                        <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">🔬</span>
+                        <p style="margin: 0; font-weight: 600; font-size: 1.1rem; color: var(--text-primary);">Awaiting Clinical Extraction...</p>
+                        <small style="display: block; margin-top: 0.5rem; color: var(--text-secondary);">Once you upload a report, click the "Done! Extract & Analyze" button above.</small>
+                    </div>
+                `;
+                
+                if (analysisResult) analysisResult.innerHTML = aiPlaceholder;
+                if (storyResult) storyResult.innerHTML = aiPlaceholder;
+                if (summaryCardEn) summaryCardEn.innerHTML = aiPlaceholder;
+                if (summaryCardMr) summaryCardMr.innerHTML = aiPlaceholder;
+                
+                if (downloadActions) downloadActions.classList.add('hidden');
+                
+                // Keep the results area visible so the tabs are always present!
+                if (resultsArea) resultsArea.classList.remove('hidden');
+            }
+
+            function clearAll() {
+                currentFiles = [];
+                rawAnalysisText = "";
+                renderGallery();
+                restoreEmptyPlaceholders();
+                selectStructuredTab();
+                if (fileInput) fileInput.value = '';
+                if (cameraInput) cameraInput.value = '';
+                if (addFileInput) addFileInput.value = '';
+                if (addCameraInput) addCameraInput.value = '';
+            }
+
+            if (clearAllBtn) clearAllBtn.addEventListener('click', clearAll);
+            if (clearGalleryBtn) clearGalleryBtn.addEventListener('click', clearAll);
+
+            // Let's initialize placeholders on load so tabs are visible immediately
+            restoreEmptyPlaceholders();
+
+            // Load saved API key permanently
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+                const masked = savedKey.length > 8 ? `${savedKey.substring(0, 6)}...${savedKey.substring(savedKey.length - 4)}` : 'Saved Key';
+                keyStatus.textContent = `✅ API Key loaded from saved preferences (${masked}).`;
+                keyStatus.style.color = "var(--accent-color)";
+            }
+
+            // Check support for -webkit-text-security to prevent autofill interception
+            const isTextSecuritySupported = 'webkitTextSecurity' in document.createElement('input').style;
+            
+            // Set initial state based on support
+            if (isTextSecuritySupported && apiKeyInput) {
+                apiKeyInput.type = "text";
+                apiKeyInput.style.webkitTextSecurity = "disc";
+            } else if (apiKeyInput) {
+                apiKeyInput.type = "password";
+            }
+
+            // Show/Hide password toggle behavior
+            if (toggleKeyVisibility && apiKeyInput) {
+                toggleKeyVisibility.addEventListener('click', () => {
+                    if (isTextSecuritySupported) {
+                        if (apiKeyInput.style.webkitTextSecurity === "disc" || apiKeyInput.style.webkitTextSecurity === "") {
+                            apiKeyInput.style.webkitTextSecurity = "none";
+                            toggleKeyVisibility.textContent = "🙈";
+                        } else {
+                            apiKeyInput.style.webkitTextSecurity = "disc";
+                            toggleKeyVisibility.textContent = "👁️";
+                        }
+                    } else {
+                        if (apiKeyInput.type === "password") {
+                            apiKeyInput.type = "text";
+                            toggleKeyVisibility.textContent = "🙈";
+                        } else {
+                            apiKeyInput.type = "password";
+                            toggleKeyVisibility.textContent = "👁️";
+                        }
+                    }
+                });
+            }
+
+            // Helper to dynamically update key status in UI without writing/deleting from storage
+            function updateKeyStatusUI(val) {
+                const trimmed = val.trim();
+                const currentSaved = safeStorage.getItem('mediscan_gemini_api_key') || "";
+                
+                if (trimmed === currentSaved) {
+                    if (currentSaved) {
+                        const masked = currentSaved.length > 8 ? `${currentSaved.substring(0, 6)}...${currentSaved.substring(currentSaved.length - 4)}` : 'Saved Key';
+                        keyStatus.textContent = `✅ API Key loaded from saved preferences (${masked}).`;
+                        keyStatus.style.color = "var(--accent-color)";
+                    } else {
+                        keyStatus.textContent = "If the default key is rate-limited, you can paste your own key here to override it instantly!";
+                        keyStatus.style.color = "var(--text-secondary)";
+                    }
+                } else {
+                    if (trimmed) {
+                        keyStatus.textContent = `✍️ Custom Key entered. Click "Save Key" to persist permanently!`;
+                        keyStatus.style.color = "#f59e0b"; // Warning/Amber color
+                    } else {
+                        keyStatus.textContent = `✍️ API Key field cleared. Click "Save Key" or "Done! Extract & Analyze" to remove from storage.`;
+                        keyStatus.style.color = "#f59e0b"; // Warning/Amber color
+                    }
+                }
+            }
+
+            // Helper to save key directly to safe storage and update UI state
+            function saveApiKeyPermanently(val) {
+                const trimmed = val.trim();
+                if (trimmed) {
+                    safeStorage.setItem('mediscan_gemini_api_key', trimmed);
+                    const masked = trimmed.length > 8 ? `${trimmed.substring(0, 6)}...${trimmed.substring(trimmed.length - 4)}` : 'Custom Key';
+                    keyStatus.textContent = `✅ API Key permanently saved for this project (${masked})!`;
+                    keyStatus.style.color = "var(--accent-color)";
+                } else {
+                    safeStorage.removeItem('mediscan_gemini_api_key');
+                    keyStatus.textContent = "❌ API Key removed. Using default key.";
+                    keyStatus.style.color = "var(--danger-color)";
+                }
+            }
+
+            // Save API key on button click
+            if (saveKeyBtn) {
+                saveKeyBtn.addEventListener('click', () => {
+                    saveApiKeyPermanently(apiKeyInput.value);
+                });
+            }
+
+            // Real-time listener for typing/pasting to update UI status messages and autosave keys
+            if (apiKeyInput) {
+                apiKeyInput.addEventListener('input', (e) => {
+                    updateKeyStatusUI(e.target.value);
+                });
+
+                apiKeyInput.addEventListener('change', (e) => {
+                    saveApiKeyPermanently(e.target.value);
+                });
+
+                apiKeyInput.addEventListener('paste', () => {
+                    setTimeout(() => {
+                        saveApiKeyPermanently(apiKeyInput.value);
+                    }, 50);
+                });
+            }
+
+            // Drag and Drop handlers
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFiles(e.dataTransfer.files);
+                }
+            });
+
+            [fileInput, cameraInput, addFileInput, addCameraInput].forEach(input => {
+                if (!input) return;
+                input.addEventListener('change', (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                        handleFiles(e.target.files);
+                    }
+                });
+            });
+
+            async function compressImage(file, maxDimension = 1200, quality = 0.70) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file);
+                    img.onload = () => {
+                        URL.revokeObjectURL(img.src);
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxDimension || height > maxDimension) {
+                            if (width > height) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob((blob) => {
+                            if (!blob) {
+                                reject(new Error("Canvas compression failed"));
+                                return;
+                            }
+                            const compressedFile = new File([blob], file.name, {
+                                type: "image/jpeg",
+                                lastModified: Date.now()
+                            });
+                            resolve(compressedFile);
+                        }, "image/jpeg", quality);
+                    };
+                    img.onerror = (err) => {
+                        URL.revokeObjectURL(img.src);
+                        reject(err);
+                    };
+                });
+            }
+
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const base64String = reader.result.split(',')[1];
+                        resolve(base64String);
+                    };
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            async function handleFiles(files) {
+                let added = false;
+                
+                // Show progressive compression states in the UI to keep user informed
+                analyzeBtn.disabled = true;
+                const originalBtnText = analyzeBtn.querySelector('.btn-text').textContent;
+                analyzeBtn.querySelector('.btn-text').textContent = '⚡ Optimizing Snaps for Mobile...';
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.type.startsWith('image/')) {
+                        try {
+                            const compressed = await compressImage(file, 1600, 0.85);
+                            currentFiles.push(compressed);
+                            added = true;
+                        } catch (e) {
+                            console.error("Compression error:", e);
+                            currentFiles.push(file);
+                            added = true;
+                        }
+                    } else {
+                        alert(`File "${file.name}" is not an image and was skipped.`);
+                    }
+                }
+
+                analyzeBtn.disabled = false;
+                analyzeBtn.querySelector('.btn-text').textContent = originalBtnText;
+
+                if (added) {
+                    renderGallery();
+
+                    // Reset analyze button text if it was changed during error
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.querySelector('.btn-text').textContent = '✅ Done! Extract & Analyze';
+
+                    // Reset results area to beautiful placeholders
+                    restoreEmptyPlaceholders();
+                }
+
+                // Clear input values
+                if (fileInput) fileInput.value = '';
+                if (cameraInput) cameraInput.value = '';
+                if (addFileInput) addFileInput.value = '';
+                if (addCameraInput) addCameraInput.value = '';
+            }
+
+            function renderGallery() {
+                if (currentFiles.length === 0) {
+                    uploadPlaceholder.classList.remove('hidden');
+                    previewGallery.classList.add('hidden');
+                    addMoreBtnContainer.classList.add('hidden');
+                    // Keep action bar visible so user always knows where the extract button is
+                    return;
+                }
+
+                uploadPlaceholder.classList.add('hidden');
+                previewGallery.classList.remove('hidden');
+                addMoreBtnContainer.classList.remove('hidden');
+                previewGallery.innerHTML = '';
+
+                currentFiles.forEach((file, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+
+                    const img = document.createElement('img');
+                    const objectUrl = URL.createObjectURL(file);
+                    img.src = objectUrl;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'remove-btn';
+                    removeBtn.innerHTML = '×';
+                    removeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        URL.revokeObjectURL(objectUrl);
+                        currentFiles.splice(index, 1);
+                        renderGallery();
+                    };
+
+                    div.appendChild(img);
+                    div.appendChild(removeBtn);
+                    previewGallery.appendChild(div);
+                });
+            }
+
+            // --- Export Functionality ---
+
+            function getPrintableClone() {
+                // Create a container div
+                const cloneContainer = document.createElement('div');
+                cloneContainer.style.background = '#0f172a'; // Match var(--bg-color)
+                cloneContainer.style.color = '#f8fafc';      // Match var(--text-primary)
+                cloneContainer.style.padding = '40px';
+                cloneContainer.style.fontFamily = 'Inter, Arial, sans-serif';
+
+                // Add a beautiful header
+                const headerDiv = document.createElement('div');
+                headerDiv.innerHTML = `
+                    <div style="text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 15px; margin-bottom: 30px;">
+                        <h1 style="color: #3b82f6; font-size: 2.2rem; margin: 0; font-weight: 700;">MediScan AI</h1>
+                        <p style="color: #94a3b8; font-size: 1rem; margin: 5px 0 0 0;">Comprehensive Medical Analysis & Patient Narrative</p>
+                    </div>
+                `;
+                cloneContainer.appendChild(headerDiv);
+
+                // Add Structured Report Section
+                const structuredTitle = document.createElement('h2');
+                structuredTitle.textContent = "I. CLINICAL ANALYSIS & STRUCTURED DATA";
+                structuredTitle.style.color = '#3b82f6';
+                structuredTitle.style.fontSize = '1.4rem';
+                structuredTitle.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+                structuredTitle.style.paddingBottom = '5px';
+                structuredTitle.style.marginTop = '20px';
+                structuredTitle.style.marginBottom = '15px';
+                cloneContainer.appendChild(structuredTitle);
+
+                const structuredContent = document.getElementById('analysisResult').cloneNode(true);
+                structuredContent.style.height = 'auto';
+                structuredContent.style.overflow = 'visible';
+                structuredContent.style.maxHeight = 'none';
+                structuredContent.style.background = 'transparent';
+                structuredContent.style.padding = '0';
+                cloneContainer.appendChild(structuredContent);
+
+                // Add Page Break & Patient Care Story Section
+                const pageBreak = document.createElement('div');
+                pageBreak.style.pageBreakBefore = 'always';
+                pageBreak.style.marginTop = '40px';
+                cloneContainer.appendChild(pageBreak);
+
+                const storyTitle = document.createElement('h2');
+                storyTitle.textContent = "II. PATIENT CARE JOURNEY & CLINICAL NARRATIVE";
+                storyTitle.style.color = '#10b981'; // accent-color
+                storyTitle.style.fontSize = '1.4rem';
+                storyTitle.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+                storyTitle.style.paddingBottom = '5px';
+                storyTitle.style.marginTop = '20px';
+                storyTitle.style.marginBottom = '15px';
+                cloneContainer.appendChild(storyTitle);
+
+                const storyContent = document.getElementById('storyResult').cloneNode(true);
+                storyContent.style.height = 'auto';
+                storyContent.style.overflow = 'visible';
+                storyContent.style.maxHeight = 'none';
+                storyContent.style.background = 'transparent';
+                storyContent.style.padding = '0';
+                storyContent.classList.remove('hidden'); // Ensure visible in clone
+                cloneContainer.appendChild(storyContent);
+
+                // Add Page Break & Patient-Friendly Summaries (English & Marathi)
+                const summaryPageBreak = document.createElement('div');
+                summaryPageBreak.style.pageBreakBefore = 'always';
+                summaryPageBreak.style.marginTop = '40px';
+                cloneContainer.appendChild(summaryPageBreak);
+
+                const summaryTitle = document.createElement('h2');
+                summaryTitle.textContent = "III. PATIENT-FRIENDLY HEALTH SUMMARIES";
+                summaryTitle.style.color = '#8b5cf6'; // premium violet
+                summaryTitle.style.fontSize = '1.4rem';
+                summaryTitle.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
+                summaryTitle.style.paddingBottom = '5px';
+                summaryTitle.style.marginTop = '20px';
+                summaryTitle.style.marginBottom = '15px';
+                cloneContainer.appendChild(summaryTitle);
+
+                // English summary block
+                const enSummaryHeader = document.createElement('h3');
+                enSummaryHeader.textContent = "🇬🇧 Patient Friendly Summary (English)";
+                enSummaryHeader.style.color = '#3b82f6';
+                enSummaryHeader.style.fontSize = '1.1rem';
+                enSummaryHeader.style.marginTop = '15px';
+                enSummaryHeader.style.marginBottom = '10px';
+                cloneContainer.appendChild(enSummaryHeader);
+
+                const enSummaryContent = document.getElementById('summaryCardEn').cloneNode(true);
+                enSummaryContent.style.height = 'auto';
+                enSummaryContent.style.overflow = 'visible';
+                enSummaryContent.style.maxHeight = 'none';
+                enSummaryContent.style.background = 'transparent';
+                enSummaryContent.style.padding = '0';
+                enSummaryContent.classList.remove('hidden');
+                cloneContainer.appendChild(enSummaryContent);
+
+                // Marathi summary block
+                const mrSummaryHeader = document.createElement('h3');
+                mrSummaryHeader.textContent = "🚩 आपला आरोग्य सारांश (Marathi Summary)";
+                mrSummaryHeader.style.color = '#8b5cf6';
+                mrSummaryHeader.style.fontSize = '1.1rem';
+                mrSummaryHeader.style.marginTop = '25px';
+                mrSummaryHeader.style.marginBottom = '10px';
+                cloneContainer.appendChild(mrSummaryHeader);
+
+                const mrSummaryContent = document.getElementById('summaryCardMr').cloneNode(true);
+                mrSummaryContent.style.height = 'auto';
+                mrSummaryContent.style.overflow = 'visible';
+                mrSummaryContent.style.maxHeight = 'none';
+                mrSummaryContent.style.background = 'transparent';
+                mrSummaryContent.style.padding = '0';
+                mrSummaryContent.classList.remove('hidden');
+                cloneContainer.appendChild(mrSummaryContent);
+
+                // Add explicit borders to tables in the clone so they render properly in Word and PDF
+                const tables = cloneContainer.querySelectorAll('table');
+                tables.forEach(t => {
+                    t.style.borderCollapse = 'collapse';
+                    t.style.width = '100%';
+                    t.style.marginBottom = '20px';
+                    t.querySelectorAll('th, td').forEach(cell => {
+                        cell.style.border = '1px solid rgba(255, 255, 255, 0.2)'; // Dark theme border
+                        cell.style.padding = '12px 8px';
+                        cell.style.textAlign = 'left';
+                        cell.style.fontSize = '0.9rem';
+                    });
+                    t.querySelectorAll('th').forEach(th => {
+                        th.style.backgroundColor = 'rgba(59, 130, 246, 0.2)'; // Blue tint for headers
+                        th.style.color = '#3b82f6'; // Primary color text
+                        th.style.fontWeight = 'bold';
+                    });
+                });
+
+                // Style standard lists & paragraph elements in the clone
+                cloneContainer.querySelectorAll('p, li').forEach(el => {
+                    el.style.fontSize = '0.95rem';
+                    el.style.lineHeight = '1.6';
+                    el.style.color = '#e2e8f0';
+                });
+
+                // Style abnormal/important badges for printing
+                const abnormals = cloneContainer.querySelectorAll('.abnormal');
+                abnormals.forEach(a => {
+                    a.style.color = '#ef4444';
+                    a.style.fontWeight = 'bold';
+                });
+
+                const abnormalBadges = cloneContainer.querySelectorAll('.abnormal-badge');
+                abnormalBadges.forEach(b => {
+                    b.style.display = 'inline-block';
+                    b.style.background = 'rgba(239, 68, 68, 0.15)';
+                    b.style.color = '#ef4444';
+                    b.style.border = '1px solid rgba(239, 68, 68, 0.3)';
+                    b.style.padding = '2px 8px';
+                    b.style.borderRadius = '20px';
+                    b.style.fontWeight = 'bold';
+                });
+
+                const importantBadges = cloneContainer.querySelectorAll('.important-badge');
+                importantBadges.forEach(b => {
+                    b.style.display = 'inline-block';
+                    b.style.background = 'rgba(245, 158, 11, 0.15)';
+                    b.style.color = '#f59e0b';
+                    b.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+                    b.style.padding = '2px 8px';
+                    b.style.borderRadius = '20px';
+                    b.style.fontWeight = 'bold';
+                });
+
+                return cloneContainer;
+            }
+
+
+
+
+            // ================================================================
+            // DOWNLOAD / SHARE HELPERS
+            // ================================================================
+
+            // Track which tab is active for share context
+            let activeDownloadTab = 'structured'; // 'structured' | 'story' | 'summary'
+
+            // Show the correct download bar when tabs switch
+            function updateDownloadBars(tab) {
+                activeDownloadTab = tab;
+                const bars = ['dlBarStructured', 'dlBarStory', 'dlBarSummary'];
+                const map = { structured: 'dlBarStructured', story: 'dlBarStory', summary: 'dlBarSummary' };
+                bars.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = (id === map[tab]) ? 'flex' : 'none';
+                });
+            }
+
+            // Hook into tab switches to update download bars
+            const _origTabStructured = tabStructured.onclick;
+            tabStructured.addEventListener('click', () => updateDownloadBars('structured'));
+            tabStory.addEventListener('click', () => updateDownloadBars('story'));
+            tabPatientSummary.addEventListener('click', () => updateDownloadBars('summary'));
+
+            // ---- Utility: strip HTML tags from a DOM element's text content ----
+            function getPlainText(elementId) {
+                const el = document.getElementById(elementId);
+                if (!el) return '';
+                // Clone and remove hidden sub-elements
+                const clone = el.cloneNode(true);
+                // Get inner text (strips HTML)
+                return clone.innerText || clone.textContent || '';
+            }
+
+            // ---- Utility: generate per-section PDF blob ----
+            async function generateSectionPdfBlob(sectionTitle, sectionColor, contentElementId, filename) {
+                const container = document.createElement('div');
+                container.style.background = '#0f172a';
+                container.style.color = '#f8fafc';
+                container.style.padding = '40px';
+                container.style.fontFamily = 'Inter, Arial, sans-serif';
+
+                container.innerHTML = `
+                    <div style="text-align:center; border-bottom:2px solid ${sectionColor}; padding-bottom:15px; margin-bottom:30px;">
+                        <h1 style="color:${sectionColor}; font-size:2rem; margin:0; font-weight:700;">MediScan AI</h1>
+                        <p style="color:#94a3b8; font-size:1rem; margin:5px 0 0 0;">${sectionTitle}</p>
+                        <p style="color:#64748b; font-size:0.85rem; margin:3px 0 0 0;">Generated on ${new Date().toLocaleDateString('en-IN', {day:'numeric',month:'long',year:'numeric'})}</p>
+                    </div>`;
+
+                const titleEl = document.createElement('h2');
+                titleEl.textContent = sectionTitle;
+                titleEl.style.color = sectionColor;
+                titleEl.style.fontSize = '1.4rem';
+                titleEl.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                titleEl.style.paddingBottom = '5px';
+                titleEl.style.marginBottom = '15px';
+                container.appendChild(titleEl);
+
+                const content = document.getElementById(contentElementId).cloneNode(true);
+                content.style.height = 'auto';
+                content.style.overflow = 'visible';
+                content.style.maxHeight = 'none';
+                content.style.background = 'transparent';
+                content.style.padding = '0';
+                content.classList.remove('hidden');
+                container.appendChild(content);
+
+                // Style tables
+                container.querySelectorAll('table').forEach(t => {
+                    t.style.borderCollapse = 'collapse';
+                    t.style.width = '100%';
+                    t.style.marginBottom = '16px';
+                    t.querySelectorAll('th,td').forEach(c => {
+                        c.style.border = '1px solid rgba(255,255,255,0.2)';
+                        c.style.padding = '10px 8px';
+                        c.style.fontSize = '0.88rem';
+                    });
+                    t.querySelectorAll('th').forEach(th => {
+                        th.style.background = `rgba(${sectionColor === '#3b82f6' ? '59,130,246' : sectionColor === '#10b981' ? '16,185,129' : '139,92,246'},0.2)`;
+                        th.style.color = sectionColor;
+                        th.style.fontWeight = 'bold';
+                    });
+                });
+                container.querySelectorAll('p,li').forEach(el => { el.style.lineHeight = '1.6'; el.style.color = '#e2e8f0'; });
+
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = 'position:absolute;top:0;left:0;width:100%;z-index:-9999;pointer-events:none;';
+                wrapper.appendChild(container);
+                document.body.appendChild(wrapper);
+
+                const opt = {
+                    margin: 0,
+                    filename: filename,
+                    image: { type: 'jpeg', quality: 0.97 },
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0f172a', scrollX: 0, scrollY: 0 },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                const blob = await html2pdf().set(opt).from(container).output('blob');
+                document.body.removeChild(wrapper);
+                return blob;
+            }
+
+            // ---- Utility: WhatsApp share (text via wa.me, file via Web Share API) ----
+            async function shareViaWhatsApp(text, pdfBlob, pdfFilename) {
+                // 1. Always copy the FULL text to clipboard as a foolproof backup against mobile OS truncation limits.
+                let copiedToClipboard = false;
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copiedToClipboard = true;
+                } catch (err) {
+                    console.warn("Clipboard copy failed", err);
+                }
+
+                // If text is very long, alert the user that they might need to paste it.
+                if (text.length > 3000 && copiedToClipboard) {
+                    alert("⚠️ The report is very long. We have copied the FULL text to your clipboard.\n\nIf WhatsApp cuts off the bottom of the report, just clear the message box and PASTE it to send the complete text!");
+                }
+
+                // 2. Try Web Share API with File + Text (works on Android Chrome / iOS Safari)
+                if (pdfBlob && navigator.canShare) {
+                    const file = new File([pdfBlob], pdfFilename, { type: 'application/pdf' });
+                    if (navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({ files: [file], title: 'MediScan AI Report', text: text.substring(0, 500) + '...' });
+                            return;
+                        } catch (e) { /* user cancelled or failed, fall through to direct text sharing */ }
+                    }
+                }
+                
+                // 3. Fallback to direct WhatsApp URL intents
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                
+                // Truncate to a safe limit for the URL intent itself (the user can paste the full version from clipboard)
+                const safeLimit = isMobile ? 4000 : 6000;
+                let urlText = text;
+                
+                if (text.length > safeLimit) {
+                    urlText = text.substring(0, safeLimit) + "\n\n[...REPORT TRUNCATED DUE TO WHATSAPP LIMITS...]\n\n👉 PLEASE CLEAR THIS MESSAGE AND 'PASTE' TO SEND THE FULL REPORT! (It is already copied to your clipboard)";
+                }
+
+                const encodedText = encodeURIComponent(urlText);
+                const waUrl = isMobile ? `whatsapp://send?text=${encodedText}` : `https://wa.me/?text=${encodedText}`;
+                
+                // Use a slight delay so the alert has time to close before launching the app intent
+                setTimeout(() => {
+                    window.open(waUrl, '_blank');
+                }, 300);
+            }
+
+            // ---- Clinic email address (pre-filled as recipient) ----
+            const CLINIC_EMAIL = 'paralehealthcare8@gmail.com';
+
+            // ---- Utility: Email via mailto (robust cross-browser) ----
+            function emailViaMailto(subject, bodyText, btnEl) {
+                // Cap body to stay within mailto URL length limits (~2000 chars safe)
+                const MAX_BODY = 1800;
+
+                // Add professional footer
+                const footer = '\n\n--\nSent via MediScan AI Medical Report Analyser\nParale Healthcare | paralehealthcare8@gmail.com';
+                const fullBody = bodyText + footer;
+
+                const truncated = fullBody.length > MAX_BODY
+                    ? fullBody.substring(0, MAX_BODY) + '\n\n[Full report truncated. Please download the PDF for the complete report.]'
+                    : fullBody;
+
+                // Pre-fill To: with clinic email so reports always land in the clinic inbox
+                const mailtoUrl = `mailto:${CLINIC_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(truncated)}`;
+
+                if (btnEl) { btnEl.innerHTML = '⏳ Opening mail...'; btnEl.disabled = true; }
+
+                // Use window.open so we don't navigate away from the app
+                const mailWindow = window.open(mailtoUrl, '_blank');
+
+                // Fallback: if window.open was blocked or mail client didn't open, copy to clipboard
+                setTimeout(() => {
+                    if (btnEl) { btnEl.innerHTML = '✉️ Email'; btnEl.disabled = false; }
+                }, 1500);
+
+                // If window.open returned null (popup blocked), try location.href as last resort
+                if (!mailWindow) {
+                    try {
+                        window.location.href = mailtoUrl;
+                    } catch(e) {
+                        // Ultimate fallback: copy full text to clipboard
+                        const clipText = `To: ${CLINIC_EMAIL}\nSubject: ${subject}\n\n${fullBody}`;
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(clipText).then(() => {
+                                alert('📋 Email client could not be opened.\n\nThe full report has been copied to your clipboard!\nOpen your Gmail (' + CLINIC_EMAIL + ') and paste it into a new email.');
+                            });
+                        } else {
+                            alert('📋 Email client could not be opened.\n\nPlease download the PDF and attach it manually to an email to ' + CLINIC_EMAIL);
+                        }
+                    }
+                }
+            }
+
+            // ---- Utility: Download Word doc ----
+            function downloadWord(contentElementId, filename) {
+                const content = document.getElementById(contentElementId).cloneNode(true);
+                content.classList.remove('hidden');
+                content.querySelectorAll('.hidden').forEach(el => el.classList.remove('hidden'));
+                const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>MediScan</title></head><body style='background:#fff;color:#111;font-family:Arial,sans-serif;padding:30px;'>";
+                const footer = "</body></html>";
+                const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(header + content.outerHTML + footer);
+                const a = document.createElement('a');
+                document.body.appendChild(a);
+                a.href = source;
+                a.download = filename;
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            // ================================================================
+            // STRUCTURED REPORT BUTTONS
+            // ================================================================
+            document.getElementById('waStructuredBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('waStructuredBtn');
+                btn.innerHTML = '⏳ Preparing...';
+                btn.disabled = true;
+                try {
+                    const text = `📊 MediScan AI - Structured Clinical Report\n\n` + getPlainText('analysisResult');
+                    const blob = await generateSectionPdfBlob('📊 Structured Clinical Report', '#3b82f6', 'analysisResult', 'MediScan_Structured_Report.pdf');
+                    await shareViaWhatsApp(text, blob, 'MediScan_Structured_Report.pdf');
+                } catch(e) { alert('Could not share. Please try downloading the PDF instead.'); }
+                finally { btn.innerHTML = '📲 WhatsApp'; btn.disabled = false; }
+            });
+
+            document.getElementById('emailStructuredBtn').addEventListener('click', () => {
+                const btn = document.getElementById('emailStructuredBtn');
+                const text = getPlainText('analysisResult');
+                emailViaMailto('MediScan AI - Structured Clinical Report', 'STRUCTURED CLINICAL REPORT\n============================\n\n' + text, btn);
+            });
+
+            document.getElementById('pdfStructuredBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('pdfStructuredBtn');
+                btn.innerHTML = '⏳ Generating...'; btn.disabled = true;
+                try {
+                    const blob = await generateSectionPdfBlob('📊 Structured Clinical Report', '#3b82f6', 'analysisResult', 'MediScan_Structured_Report.pdf');
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = 'MediScan_Structured_Report.pdf'; a.click();
+                } catch(e) { console.error(e); }
+                finally { btn.innerHTML = '⬇️ PDF'; btn.disabled = false; }
+            });
+
+            document.getElementById('wordStructuredBtn').addEventListener('click', () => {
+                const btn = document.getElementById('wordStructuredBtn');
+                btn.innerHTML = '⏳ Generating...'; btn.disabled = true;
+                try { downloadWord('analysisResult', 'MediScan_Structured_Report.doc'); }
+                catch(e) { console.error(e); }
+                finally { btn.innerHTML = '⬇️ Word'; btn.disabled = false; }
+            });
+
+            // ================================================================
+            // CLINICAL STORY BUTTONS
+            // ================================================================
+            document.getElementById('waStoryBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('waStoryBtn');
+                btn.innerHTML = '⏳ Preparing...'; btn.disabled = true;
+                try {
+                    const text = `📖 MediScan AI - Clinical Story\n\n` + getPlainText('storyResult');
+                    const blob = await generateSectionPdfBlob('📖 Clinical Care Narrative', '#10b981', 'storyResult', 'MediScan_Clinical_Story.pdf');
+                    await shareViaWhatsApp(text, blob, 'MediScan_Clinical_Story.pdf');
+                } catch(e) { alert('Could not share. Please try downloading the PDF instead.'); }
+                finally { btn.innerHTML = '📲 WhatsApp'; btn.disabled = false; }
+            });
+
+            document.getElementById('emailStoryBtn').addEventListener('click', () => {
+                const btn = document.getElementById('emailStoryBtn');
+                const text = getPlainText('storyResult');
+                emailViaMailto('MediScan AI – Clinical Care Narrative', '📖 CLINICAL CARE NARRATIVE\n=========================\n\n' + text, btn);
+            });
+
+            document.getElementById('pdfStoryBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('pdfStoryBtn');
+                btn.innerHTML = '⏳ Generating...'; btn.disabled = true;
+                try {
+                    const blob = await generateSectionPdfBlob('📖 Clinical Care Narrative', '#10b981', 'storyResult', 'MediScan_Clinical_Story.pdf');
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = 'MediScan_Clinical_Story.pdf'; a.click();
+                } catch(e) { console.error(e); }
+                finally { btn.innerHTML = '⬇️ PDF'; btn.disabled = false; }
+            });
+
+            document.getElementById('wordStoryBtn').addEventListener('click', () => {
+                const btn = document.getElementById('wordStoryBtn');
+                btn.innerHTML = '⏳ Generating...'; btn.disabled = true;
+                try { downloadWord('storyResult', 'MediScan_Clinical_Story.doc'); }
+                catch(e) { console.error(e); }
+                finally { btn.innerHTML = '⬇️ Word'; btn.disabled = false; }
+            });
+
+            // ================================================================
+            // PATIENT SUMMARY BUTTONS
+            // ================================================================
+            document.getElementById('waSummaryBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('waSummaryBtn');
+                btn.innerHTML = '⏳ Preparing...'; btn.disabled = true;
+                try {
+                    let text = '';
+                    let activeCardId = 'summaryCardEn';
+                    let title = 'MediScan AI - Your Health Summary';
+                    
+                    if (!document.getElementById('summaryCardEn').classList.contains('hidden')) {
+                        activeCardId = 'summaryCardEn';
+                        title = '❤️ MediScan AI - Your Health Summary';
+                        text = title + '\n\n' + getPlainText(activeCardId);
+                    } else if (!document.getElementById('summaryCardMr').classList.contains('hidden')) {
+                        activeCardId = 'summaryCardMr';
+                        title = '❤️ MediScan AI - आपला आरोग्य सारांश';
+                        text = title + '\n\n' + getPlainText(activeCardId);
+                    } else if (!document.getElementById('summaryCardKn').classList.contains('hidden')) {
+                        activeCardId = 'summaryCardKn';
+                        title = '❤️ MediScan AI - ನಿಮ್ಮ ಆರೋಗ್ಯ ಸಾರಾಂಶ';
+                        text = title + '\n\n' + getPlainText(activeCardId);
+                    } else if (!document.getElementById('summaryCardHi').classList.contains('hidden')) {
+                        activeCardId = 'summaryCardHi';
+                        title = '❤️ MediScan AI - आपका स्वास्थ्य सारांश';
+                        text = title + '\n\n' + getPlainText(activeCardId);
+                    }
+                    
+                    const blob = await generateSectionPdfBlob(title, '#ef4444', activeCardId, 'MediScan_Patient_Summary.pdf');
+                    await shareViaWhatsApp(text, blob, 'MediScan_Patient_Summary.pdf');
+                } catch(e) { alert('Could not share. Please try downloading the PDF instead.'); }
+                finally { btn.innerHTML = '📲 WhatsApp'; btn.disabled = false; }
+            });
+
+            document.getElementById('emailSummaryBtn').addEventListener('click', () => {
+                const btn = document.getElementById('emailSummaryBtn');
+                const enText = getPlainText('summaryCardEn');
+                const mrText = getPlainText('summaryCardMr');
+                const knText = getPlainText('summaryCardKn');
+                const hiText = getPlainText('summaryCardHi');
+                
+                const combined = 'PATIENT HEALTH SUMMARY (ENGLISH)\n=====================================\n\n' + enText + 
+                    '\n\n\nAROGYA SARANSH (MARATHI)\n=========================\n\n' + mrText + 
+                    '\n\n\nAROGYA SARAMSHA (KANNADA)\n=========================\n\n' + knText + 
+                    '\n\n\nSWASTHYA SARANSH (HINDI)\n=========================\n\n' + hiText;
+                
+                emailViaMailto('MediScan AI - Your Health Summary', combined, btn);
+            });
+
+            document.getElementById('pdfAllBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('pdfAllBtn');
+                btn.innerHTML = '⏳ Generating Full PDF...'; btn.disabled = true;
+                try {
+                    const clone = getPrintableClone();
+                    const wrapper = document.createElement('div');
+                    wrapper.style.cssText = 'position:absolute;top:0;left:0;width:100%;z-index:-9999;pointer-events:none;';
+                    wrapper.appendChild(clone);
+                    document.body.appendChild(wrapper);
+                    const opt = {
+                        margin: 0,
+                        filename: 'MediScan_Full_Report.pdf',
+                        image: { type: 'jpeg', quality: 0.97 },
+                        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0f172a', scrollX: 0, scrollY: 0 },
+                        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+                        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                    };
+                    await html2pdf().set(opt).from(clone).save();
+                    document.body.removeChild(wrapper);
+                } catch(e) { console.error(e); }
+                finally { btn.innerHTML = '⬇️ Full PDF (All Sections)'; btn.disabled = false; }
+            });
+
+            // Self-healing, resilient parser for structured AI tags and markdown sections
+            function parseSection(text, tagStart, tagEnd, headingKeywords, nextHeadingKeywords, defaultVal) {
+                if (!text) return defaultVal;
+
+                const cleanTag = (tag) => tag.replace(/[\[\]]/g, '').trim();
+                const escapeRegex = (string) => string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                
+                const baseStart = cleanTag(tagStart);
+                const baseEnd = cleanTag(tagEnd);
+                
+                const startPattern = baseStart.split(/[\s_-]+/).map(part => escapeRegex(part)).join('[\\s_-]+');
+                const endPattern = baseEnd.split(/[\s_-]+/).map(part => escapeRegex(part)).join('[\\s_-]+');
+                
+                const startRegex = new RegExp(`(?:\\*\\*|#|[ \\t])*\\[?\\s*${startPattern}\\s*\\]?(?:\\*\\*|[ \\t]|:|\\-)*`, 'i');
+                const endRegex = new RegExp(`(?:\\*\\*|#|[ \\t])*\\[?\\s*${endPattern}\\s*\\]?(?:\\*\\*|[ \\t]|:|\\-)*`, 'i');
+                
+                const startMatch = text.match(startRegex);
+                const endMatch = text.match(endRegex);
+                
+                if (startMatch) {
+                    const startIndex = startMatch.index + startMatch[0].length;
+                    let endIndex = text.length;
+                    if (endMatch && endMatch.index > startMatch.index) {
+                        endIndex = endMatch.index;
+                    }
+                    const matchText = text.substring(startIndex, endIndex).trim();
+                    if (matchText) return matchText;
+                }
+                
+                // Fallback Level: Search for heading keywords if the explicit tags are missing
+                if (headingKeywords && headingKeywords.length > 0) {
+                    for (const keyword of headingKeywords) {
+                        const keywordPattern = keyword.split(/[\s_-]+/).map(part => escapeRegex(part)).join('[\\s_-]+');
+                        const keywordRegex = new RegExp(`(?:#+|\\*\\*|[ \\t])*${keywordPattern}(?:\\*\\*|[ \\t]|:|\\-)*`, 'i');
+                        const keywordMatch = text.match(keywordRegex);
+                        if (keywordMatch) {
+                            const startIndex = keywordMatch.index + keywordMatch[0].length;
+                            let endIndex = text.length;
+                            
+                            if (nextHeadingKeywords && nextHeadingKeywords.length > 0) {
+                                let earliestNextIndex = -1;
+                                for (const nextKeyword of nextHeadingKeywords) {
+                                    const nextPattern = nextKeyword.split(/[\s_-]+/).map(part => escapeRegex(part)).join('[\\s_-]+');
+                                    const nextRegex = new RegExp(`(?:#+|\\*\\*|[ \\t])*${nextPattern}(?:\\*\\*|[ \\t]|:|\\-)*`, 'i');
+                                    const nextMatch = text.match(nextRegex);
+                                    if (nextMatch && nextMatch.index > keywordMatch.index) {
+                                        if (earliestNextIndex === -1 || nextMatch.index < earliestNextIndex) {
+                                            earliestNextIndex = nextMatch.index;
+                                        }
+                                    }
+                                }
+                                if (earliestNextIndex !== -1) endIndex = earliestNextIndex;
+                            }
+                            const matchText = text.substring(startIndex, endIndex).trim();
+                            if (matchText) return matchText;
+                        }
+                    }
+                }
+                
+                return defaultVal;
+            }
+
+            analyzeBtn.addEventListener('click', async () => {
+                if (currentFiles.length === 0) {
+                    alert('⚠️ Please upload or take a photo of your medical report first before starting the extraction & analysis.');
+                    return;
+                }
+
+                // Prioritize user-entered key over hardcoded key to allow custom override if hardcoded key is rate-limited
+                let usingCustomKey = false;
+                let apiKey = apiKeyInput.value.trim();
+                
+                if (apiKey) {
+                    usingCustomKey = true;
+                    safeStorage.setItem('mediscan_gemini_api_key', apiKey);
+                    const masked = apiKey.length > 8 ? `${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}` : 'Custom Key';
+                    keyStatus.textContent = `✅ API Key permanently saved for this project (${masked})!`;
+                    keyStatus.style.color = "var(--accent-color)";
+                } else {
+                    // Try to load from safeStorage in case it was saved before but not populated in the input field
+                    const saved = safeStorage.getItem('mediscan_gemini_api_key');
+                    if (saved) {
+                        apiKey = saved;
+                        apiKeyInput.value = saved;
+                        usingCustomKey = true;
+                        const masked = apiKey.length > 8 ? `${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}` : 'Saved Key';
+                        keyStatus.textContent = `✅ API Key loaded from saved preferences (${masked}).`;
+                        keyStatus.style.color = "var(--accent-color)";
+                    } else {
+                        // Use default hardcoded key
+                        safeStorage.removeItem('mediscan_gemini_api_key');
+                        keyStatus.textContent = "❌ API Key removed. Using default key.";
+                        keyStatus.style.color = "var(--danger-color)";
+                        apiKey = (DEFAULT_API_KEY !== "PASTE_YOUR_API_KEY_HERE" ? DEFAULT_API_KEY : "");
+                        usingCustomKey = false;
+                    }
+                }
+
+                if (!apiKey) {
+                    alert('Please enter your Google Gemini API Key first.');
+                    if (apiKeyInput) apiKeyInput.focus();
+                    return;
+                }
+
+                // UI Loading State
+                analyzeBtn.disabled = true;
+                analyzeBtn.querySelector('.btn-text').textContent = 'Extracting & Analyzing...';
+                analyzeBtn.querySelector('.loader').classList.remove('hidden');
+                resultsArea.classList.remove('hidden');
+                ocrResult.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                analysisResult.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                storyResult.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                if (summaryCardEn) summaryCardEn.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                if (summaryCardMr) summaryCardMr.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                if (summaryCardKn) summaryCardKn.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                if (summaryCardHi) summaryCardHi.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
+                selectStructuredTab();
+                analysisStatus.textContent = `Extracting & analyzing ${currentFiles.length} pages via Gemini 2.5 (using ${usingCustomKey ? 'custom override API key' : 'default API key'})...`;
+                pulseIndicator.classList.add('analyzing');
+
+                try {
+                    // Step 1: OCR Extraction using Tesseract.js
+                    let combinedExtractedText = "";
+                    let tesseractSucceeded = false;
+
+                    try {
+                        if (typeof Tesseract === 'undefined') {
+                            throw new Error("Tesseract library is not loaded.");
+                        }
+                        
+                        analysisStatus.textContent = `Initializing local OCR engine...`;
+                        const worker = await Tesseract.createWorker('eng');
+
+                        ocrResult.innerHTML = ''; // clear loader
+
+                        for (let i = 0; i < currentFiles.length; i++) {
+                            analysisStatus.textContent = `Extracting text with local OCR (Page ${i + 1} of ${currentFiles.length})...`;
+                            const ret = await worker.recognize(currentFiles[i]);
+                            combinedExtractedText += `\n--- PAGE ${i + 1} ---\n\n`;
+                            combinedExtractedText += ret.data.text;
+                            combinedExtractedText += `\n\n`;
+
+                            // Show progressive results
+                            const pageResult = document.createElement('div');
+                            pageResult.innerHTML = `<strong>Page ${i + 1}:</strong><br/>${ret.data.text.replace(/\n/g, '<br/>')}<hr/>`;
+                            ocrResult.appendChild(pageResult);
+                        }
+
+                        await worker.terminate();
+                        tesseractSucceeded = true;
+                    } catch (tessErr) {
+                        console.warn("Tesseract.js OCR failed or was blocked by browser sandbox/CSP:", tessErr);
+                        analysisStatus.textContent = `⚠️ Local OCR engine blocked/failed. Falling back to Gemini Vision OCR...`;
+                        ocrResult.innerHTML = `<div style="padding: 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; font-size: 0.9rem; margin-bottom: 1rem;">⚠️ Local OCR engine is restricted by browser sandbox/CSP. Using Gemini Vision OCR as a backup.</div><div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>`;
+                    }
+
+                    // Step 2: Prepare inputs for Gemini API
+                    analyzeBtn.querySelector('.btn-text').textContent = 'Analyzing Reports...';
+                    analysisStatus.textContent = 'Preparing medical files and prompt for AI analysis...';
+                    pulseIndicator.classList.add('analyzing');
+
+                    const parts = [];
+
+                    // Convert all uploaded medical report images to Base64 and add to parts array
+                    for (let i = 0; i < currentFiles.length; i++) {
+                        try {
+                            analysisStatus.textContent = `Converting page ${i + 1} to secure data...`;
+                            const base64Data = await fileToBase64(currentFiles[i]);
+                            parts.push({
+                                inlineData: {
+                                    mimeType: currentFiles[i].type || "image/jpeg",
+                                    data: base64Data
+                                }
+                            });
+                        } catch (b64Err) {
+                            console.error(`Failed to convert image ${i + 1} to base64:`, b64Err);
+                        }
+                    }
+
+                    // Construct prompt
+                    let promptText = `You are an expert medical AI clinical diagnostic assistant. I am providing you with the medical report images ${tesseractSucceeded ? 'along with the raw OCR-extracted text' : 'for you to analyze'}.\n\n`;
+
+                    if (tesseractSucceeded && combinedExtractedText.trim()) {
+                        promptText += `Here is the raw OCR-extracted text of the multi-page medical report:\n"""\n${combinedExtractedText}\n"""\n\n`;
+                    }
+
+                    promptText += `
+IMPORTANT INSTRUCTIONS — READ CAREFULLY BEFORE RESPONDING:
+- Do NOT write introductions, greetings, or preambles.
+- Do NOT repeat or transcribe the raw OCR text.
+- You MUST produce ALL FOUR sections below, in order, using the EXACT tags shown.
+- Each section serves a DIFFERENT purpose — do not copy content from one into another.
+
+==========================================================================
+SECTION 1: STRUCTURED CLINICAL ANALYSIS [ANALYSIS_START] ... [ANALYSIS_END]
+==========================================================================
+Purpose: A precise, concise clinical document for doctors. Use tables and bullet points.
+- Identify patient (name, age, gender, date, hospital).
+- Create ONE concise table listing ONLY ABNORMAL or borderline findings (skip all normal routine results to save space).
+- Write a professional 3-5 sentence clinical summary of the abnormalities and their implications.
+
+==========================================================================
+SECTION 2: NARRATIVE CLINICAL STORY [STORY_START] ... [STORY_END]
+==========================================================================
+Purpose: A FLOWING NARRATIVE — written like a medical story, NOT a list. This section must be COMPLETELY DIFFERENT from Section 1.
+- Write continuous prose paragraphs (NO bullet points, NO tables).
+- Tell the story of this patient's health journey: why investigations were done, what was discovered, how findings connect to each other physiologically.
+- Use warm, engaging language — as if a senior doctor is telling a colleague the patient's story.
+- Highlight key abnormal findings naturally in the prose.
+- End with a forward-looking paragraph about next steps and prognosis.
+
+==========================================================================
+SECTION 3: ENGLISH PATIENT SUMMARY [ENGLISH_SUMMARY_START] ... [ENGLISH_SUMMARY_END]
+==========================================================================
+Purpose: A warm, deeply empathetic letter-style summary for the patient and their family in HIGHLY COLLOQUIAL, everyday conversational English — absolutely NO formal medical jargon. Speak like a friendly, caring family member who happens to be a doctor explaining things over a cup of tea.
+The summary MUST cover ALL of the following in flowing paragraphs (NOT bullet points):
+
+1. GREETING & EMPATHY: Begin by acknowledging the patient by name (if available). Say something comforting like "I know getting all these tests done can be super stressful..."
+
+2. WHAT WAS CHECKED: Explain in very simple, everyday words what body parts were checked. (e.g. "We took a good look at your blood, your heart, and how your liver and kidneys are doing...")
+
+3. WHAT THE REPORTS FOUND — NORMAL THINGS: Start with the good news! Tell them what's working perfectly to give them peace of mind.
+
+4. WHAT NEEDS ATTENTION: Gently explain the abnormal findings in regular, everyday words. For each concern, give a simple reason why it happens (e.g. "Your blood sugar is a bit high — this usually happens when the body gets a bit tired of processing sweets, often due to daily stress, the food we eat, or just runs in the family.")
+
+5. HOW SERIOUS IS IT?: Give them a gentle reality check. If it's something manageable, reassure them strongly (e.g. "Don't worry too much, a lot of people have this and live completely normal, happy lives with a little bit of care.")
+
+6. LIKELY FUTURE TREATMENTS: Suggest the most likely next steps the doctor will take in a friendly way (e.g. "Your doctor will probably give you some simple daily medicines and might ask you to take a nice 30-minute walk every day.")
+
+7. OPTIMISTIC CLOSING: End on a very bright, hopeful, and encouraging note. Remind them that they're in good hands.
+
+==========================================================================
+SECTION 4: MARATHI PATIENT SUMMARY [MARATHI_SUMMARY_START] ... [MARATHI_SUMMARY_END]
+==========================================================================
+हे Section 3 चेच संपूर्ण भाषांतर व अनुकूलन आहे, पण पूर्णपणे अत्यंत साध्या, बोली आणि घरगुती मराठीत — जसे कुटुंबातील एखादा डॉक्टर सदस्य चहा पिताना समजावून सांगतो तसे. वैद्यकीय शब्द पूर्णपणे टाळा.
+
+==========================================================================
+SECTION 5: KANNADA PATIENT SUMMARY [KANNADA_SUMMARY_START] ... [KANNADA_SUMMARY_END]
+==========================================================================
+This is the complete translation and adaptation of Section 3 into highly colloquial, everyday, spoken Kannada. Use very simple, warm, and comforting Kannada, just like a caring family member explaining the reports. Avoid strict formal/literary Kannada and medical jargon entirely.
+
+==========================================================================
+SECTION 6: HINDI PATIENT SUMMARY [HINDI_SUMMARY_START] ... [HINDI_SUMMARY_END]
+==========================================================================
+This is the complete translation and adaptation of Section 3 into highly colloquial, everyday, spoken Hindi. Use very simple, warm, and comforting Hindi, just like a caring family member explaining the reports. Avoid strict formal/literary Hindi and medical jargon entirely.
+
+==========================================================================
+NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
+==========================================================================
+
+[ANALYSIS_START]
+## 1. Patient & Report Information
+| Field | Details |
+| :--- | :--- |
+| Patient | [Name or N/A] |
+| Age / Gender | [Age / Gender] |
+| Date of Report | [Date] |
+| Hospital / Lab | [Hospital Name] |
+| Tests Performed | [Brief summary of tests] |
+
+## 2. Abnormal & Key Findings
+| Test / Parameter | Result | Reference Range | Status |
+| :--- | :--- | :--- | :--- |
+| [Only abnormal or borderline values] | [Value] | [Normal Range] | [🔴 High / 🔴 Low / 🔴 Abnormal] |
+
+## 3. Clinical Summary
+[Professional 3-5 sentence summary of the abnormalities, their clinical significance, and recommended actions.]
+[ANALYSIS_END]
+
+[STORY_START]
+[Write continuous narrative prose paragraphs here — NO bullet points, NO tables. Tell the patient's medical story in flowing language.]
+[STORY_END]
+
+[ENGLISH_SUMMARY_START]
+[Write the detailed, warm, elaborate English patient summary covering all 7 points above in flowing paragraphs.]
+[ENGLISH_SUMMARY_END]
+
+[MARATHI_SUMMARY_START]
+[Write the detailed, warm, elaborate Marathi patient summary covering all 7 points above in flowing Marathi paragraphs.]
+[MARATHI_SUMMARY_END]
+
+[KANNADA_SUMMARY_START]
+[Write the detailed, warm, elaborate Kannada patient summary covering all 7 points above in flowing Kannada paragraphs.]
+[KANNADA_SUMMARY_END]
+
+[HINDI_SUMMARY_START]
+[Write the detailed, warm, elaborate Hindi patient summary covering all 7 points above in flowing Hindi paragraphs.]
+[HINDI_SUMMARY_END]
+`;
+
+                    parts.push({ text: promptText });
+
+                    let response;
+                    let lastError = "";
+                    let success = false;
+                    let selectedModel = '';
+
+                    // Build the key pool: if user has a custom key, use only that; otherwise rotate through all default keys
+                    const keyPool = usingCustomKey ? [apiKey] : DEFAULT_API_KEY_POOL;
+
+                    // Models confirmed working with these API keys (tested live)
+                    const MODELS_TO_TRY = [
+                        'gemini-2.5-flash-lite',
+                        'gemini-2.5-flash',
+                        'gemini-2.0-flash',
+                        'gemini-2.0-flash-lite',
+                        'gemini-flash-latest',
+                        'gemini-pro-latest'
+                    ];
+
+                    // Try every key × every model silently until one succeeds
+                    outer:
+                    for (let ki = 0; ki < keyPool.length && !success; ki++) {
+                        const currentKey = keyPool[ki];
+                        for (let mi = 0; mi < MODELS_TO_TRY.length && !success; mi++) {
+                            const model = MODELS_TO_TRY[mi];
+
+                            try {
+                                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
+                                response = await fetch(url, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        contents: [{ parts: parts }],
+                                        generationConfig: {
+                                            temperature: 0.15,
+                                            topP: 0.85,
+                                            maxOutputTokens: 65536
+                                        }
+                                    })
+                                });
+
+                                if (response.ok) {
+                                    success = true;
+                                    selectedModel = model;
+                                    break outer;
+                                }
+
+                                const errorData = await response.json();
+                                lastError = (errorData.error && errorData.error.message) || `HTTP ${response.status}`;
+                                console.warn(`Key[${ki}] ${model} failed: ${lastError}`);
+
+                                // Hard API key error — stop everything
+                                if (response.status === 400 && lastError.toLowerCase().includes('key')) {
+                                    if (ki === keyPool.length - 1) {
+                                        throw new Error('❌ All API keys appear to be invalid. Please check the API Key settings panel.');
+                                    }
+                                    break; // Try next key
+                                }
+
+                                // Model not available — skip to next model
+                                if (response.status === 404 || lastError.toLowerCase().includes('not found') || lastError.toLowerCase().includes('does not exist')) {
+                                    continue;
+                                }
+
+                            } catch (err) {
+                                if (err.message && err.message.startsWith('❌')) throw err;
+                                lastError = err.message || 'Network error';
+                                console.warn(`Fetch error Key[${ki}] ${model}: ${lastError}`);
+                            }
+
+                            // Small silent gap between attempts
+                            await new Promise(r => setTimeout(r, 800));
+                        }
+                    }
+
+                    if (!success) {
+                        throw new Error('Unable to connect to the AI service at this time. Please try again in a few minutes.');
+                    }
+
+
+                    const data = await response.json();
+                    const textContent = data.candidates[0].content.parts[0].text;
+                    rawAnalysisText = textContent;
+
+                    const parsedExtractedText = parseSection(
+                        textContent,
+                        '[EXTRACTED_TEXT_START]',
+                        '[EXTRACTED_TEXT_END]',
+                        ["Raw Extracted OCR Text", "Extracted Text", "PAGE 1", "PAGE 1 ---"],
+                        ["Patient & Report Information", "Consolidated Medical Findings", "ANALYSIS_START", "[ANALYSIS_START]"],
+                        ""
+                    );
+
+                    const parsedAnalysis = parseSection(
+                        textContent, 
+                        '[ANALYSIS_START]', 
+                        '[ANALYSIS_END]', 
+                        ["Patient & Report Information", "Consolidated Medical Findings", "Clinical Analysis", "Abnormalities & Clinical Summary", "Medical Findings"], 
+                        ["The Patient's Clinical Story", "Clinical Story", "STORY_START"], 
+                        ""
+                    );
+
+                    const parsedStory = parseSection(
+                        textContent, 
+                        '[STORY_START]', 
+                        '[STORY_END]', 
+                        ["The Patient's Clinical Story", "Clinical Story", "Patient Context", "Chronological Summary", "Clinical Correlation"], 
+                        ["Your Friendly Health Summary", "English Patient Summary", "Patient Summary", "ENGLISH_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedEnglishSummary = parseSection(
+                        textContent, 
+                        '[ENGLISH_SUMMARY_START]', 
+                        '[ENGLISH_SUMMARY_END]', 
+                        ["Your Friendly Health Summary", "English Summary", "Friendly Health Summary", "English Patient Summary"], 
+                        ["आरोग्य सारांश (मराठीत)", "आरोग्य सारांश", "Marathi Summary", "MARATHI_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedMarathiSummary = parseSection(
+                        textContent, 
+                        '[MARATHI_SUMMARY_START]', 
+                        '[MARATHI_SUMMARY_END]', 
+                        ["आरोग्य सारांश", "आपला आरोग्य सारांश", "आरोग्य सारांश (मराठीत)", "मराठीत सोपा सारांश", "मराठीत आरोग्य सारांश"], 
+                        ["KANNADA_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedKannadaSummary = parseSection(
+                        textContent, 
+                        '[KANNADA_SUMMARY_START]', 
+                        '[KANNADA_SUMMARY_END]', 
+                        ["ಆರೋಗ್ಯ ಸಾರಾಂಶ", "ಕನ್ನಡ ಸಾರಾಂಶ"], 
+                        ["HINDI_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedHindiSummary = parseSection(
+                        textContent, 
+                        '[HINDI_SUMMARY_START]', 
+                        '[HINDI_SUMMARY_END]', 
+                        ["स्वास्थ्य सारांश", "हिन्दी सारांश"], 
+                        [], 
+                        ""
+                    );
+
+                    // Map directly to client-side local OCR text for perfect reliability, falling back to Gemini's parsed OCR if Tesseract failed
+                    let ocrMarkup = tesseractSucceeded ? combinedExtractedText : parsedExtractedText;
+                    if (!ocrMarkup || ocrMarkup.trim().length === 0) {
+                        ocrMarkup = parsedExtractedText || combinedExtractedText || "No text extracted from the report images.";
+                    }
+
+                    let analysisMarkup = parsedAnalysis;
+                    if (!analysisMarkup) {
+                        analysisMarkup = textContent;
+                    }
+
+                    let storyMarkup = parsedStory;
+                    if (!storyMarkup || storyMarkup.trim().length < 50) {
+                        storyMarkup = "*⚠️ The clinical narrative story could not be generated. This usually means the AI hit its output limit while processing a very large report. Please try again — the results may vary on each attempt.*";
+                    }
+
+                    let englishSummaryMarkup = parsedEnglishSummary;
+                    if (!englishSummaryMarkup || englishSummaryMarkup.trim().length < 30) {
+                        englishSummaryMarkup = "*⚠️ The English patient summary could not be generated this time. The AI may have run out of output space processing a large report. Please try running the analysis again.*";
+                    }
+
+                    let marathiSummaryMarkup = parsedMarathiSummary;
+                    if (!marathiSummaryMarkup || marathiSummaryMarkup.trim().length < 30) {
+                        marathiSummaryMarkup = "*⚠️ मराठी सारांश तयार होऊ शकला नाही. पुन्हा एकदा 'Extract & Analyze' दाबा.*";
+                    }
+
+                    let kannadaSummaryMarkup = parsedKannadaSummary;
+                    if (!kannadaSummaryMarkup || kannadaSummaryMarkup.trim().length < 30) {
+                        kannadaSummaryMarkup = "*⚠️ ಕನ್ನಡ ಸಾರಾಂಶವನ್ನು ರಚಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.*";
+                    }
+
+                    let hindiSummaryMarkup = parsedHindiSummary;
+                    if (!hindiSummaryMarkup || hindiSummaryMarkup.trim().length < 30) {
+                        hindiSummaryMarkup = "*⚠️ स्वास्थ्य सारांश उत्पन्न नहीं हो सका। कृपया पुनः प्रयास करें।*";
+                    }
+
+                    // Render to the columns
+                    ocrResult.innerHTML = marked.parse(ocrMarkup);
+                    
+                    let htmlContent = marked.parse(analysisMarkup);
+                    htmlContent = htmlContent.replace(/🔴/g, '<span style="font-size: 1.2em;">🔴</span>');
+                    analysisResult.innerHTML = htmlContent;
+
+                    // Render to Story tab
+                    let storyHtmlContent = marked.parse(storyMarkup);
+                    storyResult.innerHTML = storyHtmlContent;
+
+                    // Render to Summary Cards
+                    if (summaryCardEn) summaryCardEn.innerHTML = marked.parse(englishSummaryMarkup);
+                    if (summaryCardMr) summaryCardMr.innerHTML = marked.parse(marathiSummaryMarkup);
+                    if (summaryCardKn) summaryCardKn.innerHTML = marked.parse(kannadaSummaryMarkup);
+                    if (summaryCardHi) summaryCardHi.innerHTML = marked.parse(hindiSummaryMarkup);
+
+                    analysisStatus.textContent = `Analysis complete (via ${selectedModel}). Switch tabs to view the Patient Story or Patient Summary!`;
+                    downloadActions.classList.remove('hidden');
+
+                } catch (error) {
+                    console.error("AI Analysis Error:", error);
+                    ocrResult.innerHTML = `<span style="color:var(--danger-color)">Failed to extract text. Error: ${error.message}</span>`;
+                    analysisResult.innerHTML = `<span style="color:var(--danger-color)">Analysis Failed. Error: ${error.message}</span>`;
+                    storyResult.innerHTML = `<span style="color:var(--danger-color)">Narrative Story Generation Failed. Error: ${error.message}</span>`;
+                    if (summaryCardEn) summaryCardEn.innerHTML = `<span style="color:var(--danger-color)">English Summary Generation Failed. Error: ${error.message}</span>`;
+                    if (summaryCardMr) summaryCardMr.innerHTML = `<span style="color:var(--danger-color)">Marathi Summary Generation Failed. Error: ${error.message}</span>`;
+                    if (summaryCardKn) summaryCardKn.innerHTML = `<span style="color:var(--danger-color)">Kannada Summary Generation Failed. Error: ${error.message}</span>`;
+                    if (summaryCardHi) summaryCardHi.innerHTML = `<span style="color:var(--danger-color)">Hindi Summary Generation Failed. Error: ${error.message}</span>`;
+                    analysisStatus.textContent = 'Error occurred.';
+                } finally {
+                    analyzeBtn.disabled = false;
+                    analyzeBtn.querySelector('.btn-text').textContent = '✅ Done! Extract & Analyze';
+                    analyzeBtn.querySelector('.loader').classList.add('hidden');
+                    pulseIndicator.classList.remove('analyzing');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
