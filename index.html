@@ -12,6 +12,11 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- html2pdf for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- PDF.js for parsing uploaded PDFs into images -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -861,7 +866,10 @@
                         </div>
                         <div class="upload-btn-wrapper">
                             <button class="btn-secondary" style="width: 100%;">📁 Browse Files</button>
-                            <input type="file" id="fileInput" accept="image/*" multiple>
+                            <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
+                        </div>
+                        <div class="upload-btn-wrapper electron-only" style="display: none; width: 100%; margin-top: 0.5rem;">
+                            <button id="openScannerBtn" class="btn-primary" style="width: 100%; background: #f59e0b; color: white;">🖨️ Open Native Scanner App</button>
                         </div>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1rem; text-align: center;">
@@ -881,7 +889,7 @@
                     </div>
                     <div class="upload-btn-wrapper">
                         <button class="btn-secondary" style="width: 100%;">📁 Browse More Files</button>
-                        <input type="file" id="addFileInput" accept="image/*" multiple>
+                        <input type="file" id="addFileInput" accept="image/*,application/pdf" multiple>
                     </div>
                     <button id="clearGalleryBtn" class="btn-secondary"
                         style="width: 100%; border-color: var(--danger-color); color: var(--danger-color); padding: 0.8rem; cursor: pointer; border-radius: 8px; font-weight: 600; background: transparent;">🧹
@@ -1174,13 +1182,19 @@
             const savedKey = safeStorage.getItem('mediscan_gemini_api_key');
             const actionBar = document.getElementById('actionBar');
 
-            // If a hardcoded key is provided, hide the API key configuration panel entirely
-            // so that patients/users on mobile links are not asked for a key.
+            // Keep API key configuration panel accessible so users can enter their own key if default keys are quota-limited
             const apiConfigDetails = document.getElementById('apiConfigDetails');
             if (apiConfigDetails) {
-                if (DEFAULT_API_KEY !== "PASTE_YOUR_API_KEY_HERE" && DEFAULT_API_KEY.length > 10) {
+                if (savedKey) {
+                    apiConfigDetails.setAttribute('open', '');
+                    if (apiKeyInput) apiKeyInput.value = savedKey;
+                    if (keyStatus) {
+                        keyStatus.textContent = `✅ API Key loaded from saved preferences.`;
+                        keyStatus.style.color = "var(--accent-color)";
+                    }
+                } else if (DEFAULT_API_KEY !== "PASTE_YOUR_API_KEY_HERE" && DEFAULT_API_KEY.length > 10) {
                     apiConfigDetails.removeAttribute('open');
-                    apiConfigDetails.closest('.config-section').style.display = 'none';
+                    apiConfigDetails.closest('.config-section').style.display = 'block';
                 } else {
                     apiConfigDetails.setAttribute('open', '');
                 }
@@ -1517,8 +1531,37 @@
                             currentFiles.push(file);
                             added = true;
                         }
+                    } else if (file.type === 'application/pdf') {
+                        try {
+                            analyzeBtn.querySelector('.btn-text').textContent = '📄 Extracting PDF Pages...';
+                            const arrayBuffer = await file.arrayBuffer();
+                            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                            
+                            for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                                analyzeBtn.querySelector('.btn-text').textContent = `📄 Extracting PDF Page ${pageNum} of ${pdf.numPages}...`;
+                                const page = await pdf.getPage(pageNum);
+                                const viewport = page.getViewport({ scale: 2.0 }); // High resolution for OCR
+                                
+                                const canvas = document.createElement('canvas');
+                                const ctx = canvas.getContext('2d');
+                                canvas.width = viewport.width;
+                                canvas.height = viewport.height;
+                                
+                                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                                
+                                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+                                const pageFile = new File([blob], `${file.name.replace('.pdf', '')}_page${pageNum}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+                                
+                                const compressed = await compressImage(pageFile, 1600, 0.85);
+                                currentFiles.push(compressed);
+                                added = true;
+                            }
+                        } catch (e) {
+                            console.error("PDF processing error:", e);
+                            alert(`Failed to process PDF "${file.name}".`);
+                        }
                     } else {
-                        alert(`File "${file.name}" is not an image and was skipped.`);
+                        alert(`File "${file.name}" is not an image or PDF and was skipped.`);
                     }
                 }
 
@@ -2424,15 +2467,17 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                     // Build the key pool: if user has a custom key, use only that; otherwise rotate through all default keys
                     const keyPool = usingCustomKey ? [apiKey] : DEFAULT_API_KEY_POOL;
 
-                    // Models confirmed working with these API keys (tested live)
+                    // Models confirmed working with Gemini API
                     const MODELS_TO_TRY = [
-                        'gemini-2.5-flash-lite',
-                        'gemini-2.5-flash',
                         'gemini-2.0-flash',
+                        'gemini-1.5-flash',
                         'gemini-2.0-flash-lite',
+                        'gemini-1.5-pro',
                         'gemini-flash-latest',
                         'gemini-pro-latest'
                     ];
+
+                    let isRateLimited = false;
 
                     // Try every key × every model silently until one succeeds
                     outer:
@@ -2466,6 +2511,10 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                                 lastError = (errorData.error && errorData.error.message) || `HTTP ${response.status}`;
                                 console.warn(`Key[${ki}] ${model} failed: ${lastError}`);
 
+                                if (response.status === 429 || lastError.toLowerCase().includes('quota') || lastError.toLowerCase().includes('rate limit') || lastError.toLowerCase().includes('resource_exhausted')) {
+                                    isRateLimited = true;
+                                }
+
                                 // Hard API key error — stop everything
                                 if (response.status === 400 && lastError.toLowerCase().includes('key')) {
                                     if (ki === keyPool.length - 1) {
@@ -2486,12 +2535,25 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                             }
 
                             // Small silent gap between attempts
-                            await new Promise(r => setTimeout(r, 800));
+                            await new Promise(r => setTimeout(r, 400));
                         }
                     }
 
                     if (!success) {
-                        throw new Error('Unable to connect to the AI service at this time. Please try again in a few minutes.');
+                        if (apiConfigDetails) {
+                            apiConfigDetails.setAttribute('open', '');
+                            if (apiConfigDetails.closest('.config-section')) {
+                                apiConfigDetails.closest('.config-section').style.display = 'block';
+                            }
+                        }
+                        if (isRateLimited) {
+                            if (keyStatus) {
+                                keyStatus.innerHTML = `⚠️ <strong>Default Key Quota Exhausted:</strong> The shared free key has hit Google Gemini's rate limit. Please paste your own free API key above! (<a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #60a5fa; text-decoration: underline;">Get free key from Google AI Studio</a>)`;
+                                keyStatus.style.color = "var(--danger-color)";
+                            }
+                            throw new Error('⚠️ The shared API key quota has been exhausted by Google (HTTP 429). Please enter your own free Gemini API key in the settings panel above to analyze your report.');
+                        }
+                        throw new Error(`Unable to connect to AI service: ${lastError}`);
                     }
 
 
@@ -2635,6 +2697,35 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                     pulseIndicator.classList.remove('analyzing');
                 }
             });
+            // Desktop App Scanner Logic
+            const isElectron = window && window.process && window.process.type;
+            if (isElectron) {
+                document.querySelectorAll('.electron-only').forEach(el => el.style.display = 'block');
+                
+                const openScannerBtn = document.getElementById('openScannerBtn');
+                if (openScannerBtn) {
+                    openScannerBtn.addEventListener('click', () => {
+                        const { exec } = require('child_process');
+                        const os = require('os');
+                        
+                        let command = '';
+                        if (os.platform() === 'win32') {
+                            command = 'wiaacmgr'; // Windows Default Scanner App
+                        } else if (os.platform() === 'darwin') {
+                            command = 'open -a "Image Capture"'; // macOS Default Scanner App
+                        } else {
+                            command = 'simple-scan'; // Linux SANE
+                        }
+                        
+                        exec(command, (error) => {
+                            if (error) {
+                                alert('Could not launch the default scanner app automatically. Please open it from your Start Menu / Applications folder.');
+                                console.error('Scanner launch error:', error);
+                            }
+                        });
+                    });
+                }
+            }
         });
     </script>
 </body>
