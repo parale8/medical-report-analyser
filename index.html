@@ -1217,10 +1217,10 @@
         // Paste your API key between the quotes below to make it permanent for Netlify.
         // Once you do this, the API key input box will disappear for your users.
         // ==========================================
-        const DEFAULT_API_KEY = "AQ.Ab8RN6KviBoA18p_HHAW-wYHqdPe6vBX4XrGJDH3atXBVlpuoA";
+        const DEFAULT_API_KEY = "AQ.Ab8RN6LO8AFB3VgG6WXCT3FIA5AUHMO2SvHobrt2BNjM7xYnPA";
         // Additional backup keys — rotated automatically when one hits quota
         const DEFAULT_API_KEY_POOL = [
-            "AQ.Ab8RN6KviBoA18p_HHAW-wYHqdPe6vBX4XrGJDH3atXBVlpuoA",
+            "AQ.Ab8RN6LO8AFB3VgG6WXCT3FIA5AUHMO2SvHobrt2BNjM7xYnPA",
             "AIzaSyB_tXJpuecllw3CqqqdB2DTEbIbD4L47oQ",
             "AIzaSyAq05lwkp2tXa1bMvwRnHJPlA4J3xcwBHI",
             "AIzaSyBgNhz7n7nFGJW1A1nMAj5aTAsrIdZz6C8",
@@ -1770,17 +1770,19 @@
                 });
             }
 
-            // Hook photo buttons to camera modal
-            [cameraInput, addCameraInput].forEach((input, index) => {
-                if (!input) return;
-                input.addEventListener('click', (e) => {
-                    // Launch interactive camera modal if mediaDevices is supported
-                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !e.defaultPrevented) {
-                        e.preventDefault();
-                        openCameraModal(input);
-                    }
+            // Hook photo buttons to camera modal or native file chooser
+            if (takePhotoBtn) {
+                takePhotoBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openCameraModal(cameraInput);
                 });
-            });
+            }
+            if (addTakePhotoBtn) {
+                addTakePhotoBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openCameraModal(addCameraInput);
+                });
+            }
 
             dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -2833,16 +2835,15 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
 
                     // Models confirmed working with Gemini API
                     const MODELS_TO_TRY = [
-                        'gemini-2.5-flash',
+                        'gemini-3.6-flash',
+                        'gemini-3.5-flash',
+                        'gemini-3.1-flash-lite',
                         'gemini-2.0-flash',
-                        'gemini-1.5-flash',
-                        'gemini-2.0-flash-lite',
-                        'gemini-1.5-pro',
-                        'gemini-flash-latest',
-                        'gemini-pro-latest'
+                        'gemini-flash-latest'
                     ];
 
                     let isRateLimited = false;
+                    let isKeyInvalid = false;
 
                     // Try every key × every model silently until one succeeds
                     outer:
@@ -2872,20 +2873,19 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                                     break outer;
                                 }
 
-                                const errorData = await response.json();
+                                const errorData = await response.json().catch(() => ({}));
                                 lastError = (errorData.error && errorData.error.message) || `HTTP ${response.status}`;
-                                console.warn(`Key[${ki}] ${model} failed: ${lastError}`);
+                                console.warn(`Key[${ki}] ${model} failed (${response.status}): ${lastError}`);
 
+                                // Check for rate limiting / quota
                                 if (response.status === 429 || lastError.toLowerCase().includes('quota') || lastError.toLowerCase().includes('rate limit') || lastError.toLowerCase().includes('resource_exhausted')) {
                                     isRateLimited = true;
                                 }
 
-                                // Hard API key error — stop everything
-                                if (response.status === 400 && lastError.toLowerCase().includes('key')) {
-                                    if (ki === keyPool.length - 1) {
-                                        throw new Error('❌ All API keys appear to be invalid. Please check the API Key settings panel.');
-                                    }
-                                    break; // Try next key
+                                // Check for invalid/revoked/unauthenticated API key — stop looping models for this key immediately!
+                                if (response.status === 401 || response.status === 403 || lastError.toLowerCase().includes('key') || lastError.toLowerCase().includes('unauthenticated') || lastError.toLowerCase().includes('leaked')) {
+                                    isKeyInvalid = true;
+                                    break; // Skip remaining models for this invalid key
                                 }
 
                                 // Model not available — skip to next model
@@ -2899,8 +2899,8 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                                 console.warn(`Fetch error Key[${ki}] ${model}: ${lastError}`);
                             }
 
-                            // Small silent gap between attempts
-                            await new Promise(r => setTimeout(r, 400));
+                            // Small silent gap between model attempts
+                            await new Promise(r => setTimeout(r, 150));
                         }
                     }
 
@@ -2911,12 +2911,19 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                                 apiConfigDetails.closest('.config-section').style.display = 'block';
                             }
                         }
-                        if (isRateLimited) {
+                        if (isKeyInvalid) {
                             if (keyStatus) {
-                                keyStatus.innerHTML = `⚠️ <strong>Default Key Quota Exhausted:</strong> The shared free key has hit Google Gemini's rate limit. Please paste your own free API key above! (<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">Get free key from Google AI Studio</a>)`;
+                                keyStatus.innerHTML = `❌ <strong>API Key Invalid or Revoked:</strong> The entered key is not valid for Google Gemini. Please get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">Google AI Studio</a> and paste it above!`;
                                 keyStatus.style.color = "var(--danger-color)";
                             }
-                            throw new Error('⚠️ The shared API key quota has been exhausted by Google (HTTP 429). Please enter your own free Gemini API key in the settings panel above to analyze your report.');
+                            throw new Error('❌ The Gemini API key is invalid or has been revoked (HTTP 401/403). Please enter a valid free Gemini API key from Google AI Studio in the settings panel above.');
+                        }
+                        if (isRateLimited) {
+                            if (keyStatus) {
+                                keyStatus.innerHTML = `⚠️ <strong>Default Key Quota Exhausted:</strong> The shared key has hit Google Gemini's rate limit. Please paste your own free API key above! (<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">Get free key from Google AI Studio</a>)`;
+                                keyStatus.style.color = "var(--danger-color)";
+                            }
+                            throw new Error('⚠️ The API key quota has been exhausted (HTTP 429). Please enter your own free Gemini API key in the settings panel above to analyze your report.');
                         }
                         throw new Error(`Unable to connect to AI service: ${lastError}`);
                     }
