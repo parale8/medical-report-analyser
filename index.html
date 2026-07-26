@@ -1217,9 +1217,10 @@
         // Paste your API key between the quotes below to make it permanent for Netlify.
         // Once you do this, the API key input box will disappear for your users.
         // ==========================================
-        const DEFAULT_API_KEY = "AIzaSyB_tXJpuecllw3CqqqdB2DTEbIbD4L47oQ";
+        const DEFAULT_API_KEY = "AQ.Ab8RN6KviBoA18p_HHAW-wYHqdPe6vBX4XrGJDH3atXBVlpuoA";
         // Additional backup keys — rotated automatically when one hits quota
         const DEFAULT_API_KEY_POOL = [
+            "AQ.Ab8RN6KviBoA18p_HHAW-wYHqdPe6vBX4XrGJDH3atXBVlpuoA",
             "AIzaSyB_tXJpuecllw3CqqqdB2DTEbIbD4L47oQ",
             "AIzaSyAq05lwkp2tXa1bMvwRnHJPlA4J3xcwBHI",
             "AIzaSyBgNhz7n7nFGJW1A1nMAj5aTAsrIdZz6C8",
@@ -2912,7 +2913,7 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                         }
                         if (isRateLimited) {
                             if (keyStatus) {
-                                keyStatus.innerHTML = `⚠️ <strong>Default Key Quota Exhausted:</strong> The shared free key has hit Google Gemini's rate limit. Please paste your own free API key above! (<a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #60a5fa; text-decoration: underline;">Get free key from Google AI Studio</a>)`;
+                                keyStatus.innerHTML = `⚠️ <strong>Default Key Quota Exhausted:</strong> The shared free key has hit Google Gemini's rate limit. Please paste your own free API key above! (<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">Get free key from Google AI Studio</a>)`;
                                 keyStatus.style.color = "var(--danger-color)";
                             }
                             throw new Error('⚠️ The shared API key quota has been exhausted by Google (HTTP 429). Please enter your own free Gemini API key in the settings panel above to analyze your report.');
