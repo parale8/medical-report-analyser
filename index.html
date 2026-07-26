@@ -1075,7 +1075,16 @@
                 </div>
             </section>
 
-            <div class="action-bar" id="actionBar" style="margin-top: 2rem; display: flex; justify-content: center; width: 100%;">
+            <div class="action-bar" id="actionBar" style="margin-top: 2rem; display: flex; flex-direction: column; align-items: center; gap: 0.8rem; width: 100%;">
+                <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px;">
+                    <span style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem; font-weight: 600;">🗣️ Select Summary Language:</span>
+                    <div style="display: flex; flex-wrap: wrap; justify-content: center; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--panel-border); border-radius: 16px; padding: 6px; gap: 6px; width: 100%;">
+                        <button id="mainLangEn" type="button" class="main-lang-btn" data-lang="en" style="border: none; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; background: var(--primary-color); color: white; flex-grow: 1;">🇬🇧 English</button>
+                        <button id="mainLangMr" type="button" class="main-lang-btn" data-lang="mr" style="border: none; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); flex-grow: 1;">🚩 मराठी</button>
+                        <button id="mainLangKn" type="button" class="main-lang-btn" data-lang="kn" style="border: none; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); flex-grow: 1;">🟡 ಕನ್ನಡ</button>
+                        <button id="mainLangHi" type="button" class="main-lang-btn" data-lang="hi" style="border: none; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); flex-grow: 1;">🇮🇳 हिन्दी</button>
+                    </div>
+                </div>
                 <button id="analyzeBtn" class="btn-primary"
                     style="width: 100%; max-width: 400px; font-size: 1.2rem; padding: 1rem; background: var(--accent-color); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 0.5rem; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
                     <span class="btn-text">✅ Done! Extract & Analyze</span>
@@ -1463,34 +1472,47 @@
             if (tabPatientSummary) tabPatientSummary.addEventListener('click', selectPatientSummaryTab);
 
             // Patient Summary Language Switchers
-            const languages = [
-                { btn: btnLangEn, card: summaryCardEn, color: 'var(--primary-color)' },
-                { btn: btnLangMr, card: summaryCardMr, color: '#8b5cf6' }, // Violet
-                { btn: btnLangKn, card: summaryCardKn, color: '#f59e0b' }, // Amber
-                { btn: btnLangHi, card: summaryCardHi, color: '#ec4899' }  // Pink
-            ];
+            let currentSelectedLangCode = 'en';
 
-            function selectLanguage(selectedBtn) {
-                languages.forEach(lang => {
-                    if (!lang.btn || !lang.card) return;
-                    if (lang.btn === selectedBtn) {
-                        lang.btn.style.background = lang.color;
-                        lang.btn.style.color = 'white';
-                        lang.btn.style.boxShadow = `0 2px 6px ${lang.color}40`;
-                        lang.card.classList.remove('hidden');
-                    } else {
-                        lang.btn.style.background = 'transparent';
-                        lang.btn.style.color = 'var(--text-secondary)';
-                        lang.btn.style.boxShadow = 'none';
-                        lang.card.classList.add('hidden');
+            function selectLanguageByCode(code) {
+                currentSelectedLangCode = code;
+                const langMap = {
+                    'en': { mainBtn: document.getElementById('mainLangEn'), tabBtn: btnLangEn, card: summaryCardEn, color: 'var(--primary-color)' },
+                    'mr': { mainBtn: document.getElementById('mainLangMr'), tabBtn: btnLangMr, card: summaryCardMr, color: '#8b5cf6' },
+                    'kn': { mainBtn: document.getElementById('mainLangKn'), tabBtn: btnLangKn, card: summaryCardKn, color: '#f59e0b' },
+                    'hi': { mainBtn: document.getElementById('mainLangHi'), tabBtn: btnLangHi, card: summaryCardHi, color: '#ec4899' }
+                };
+
+                Object.keys(langMap).forEach(key => {
+                    const item = langMap[key];
+                    const isActive = (key === code);
+                    [item.mainBtn, item.tabBtn].forEach(btn => {
+                        if (btn) {
+                            if (isActive) {
+                                btn.style.background = item.color;
+                                btn.style.color = 'white';
+                                btn.style.boxShadow = `0 2px 6px ${item.color}40`;
+                            } else {
+                                btn.style.background = 'transparent';
+                                btn.style.color = 'var(--text-secondary)';
+                                btn.style.boxShadow = 'none';
+                            }
+                        }
+                    });
+                    if (item.card) {
+                        if (isActive) item.card.classList.remove('hidden');
+                        else item.card.classList.add('hidden');
                     }
                 });
             }
 
-            if (btnLangEn) btnLangEn.addEventListener('click', () => selectLanguage(btnLangEn));
-            if (btnLangMr) btnLangMr.addEventListener('click', () => selectLanguage(btnLangMr));
-            if (btnLangKn) btnLangKn.addEventListener('click', () => selectLanguage(btnLangKn));
-            if (btnLangHi) btnLangHi.addEventListener('click', () => selectLanguage(btnLangHi));
+            document.querySelectorAll('.main-lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => selectLanguageByCode(btn.getAttribute('data-lang')));
+            });
+            if (btnLangEn) btnLangEn.addEventListener('click', () => selectLanguageByCode('en'));
+            if (btnLangMr) btnLangMr.addEventListener('click', () => selectLanguageByCode('mr'));
+            if (btnLangKn) btnLangKn.addEventListener('click', () => selectLanguageByCode('kn'));
+            if (btnLangHi) btnLangHi.addEventListener('click', () => selectLanguageByCode('hi'));
 
             function restoreEmptyPlaceholders() {
                 if (ocrResult) {
@@ -2694,13 +2716,27 @@
                         }
                     }
 
-                    // Construct prompt with instructions to produce Extracted OCR Text + Analysis + Story + Patient Summaries
+                    // Determine selected summary language
+                    let targetLangName = "English";
+                    let targetLangInstruction = "Write a warm, deeply empathetic letter-style summary for the patient and family in simple, everyday conversational English (no medical jargon).";
+                    
+                    if (currentSelectedLangCode === 'mr') {
+                        targetLangName = "Marathi";
+                        targetLangInstruction = "Write the patient summary ENTIRELY in simple, warm, everyday spoken Marathi (साध्या, घरगुती बोलक्या मराठीत). Absolutely no medical jargon.";
+                    } else if (currentSelectedLangCode === 'kn') {
+                        targetLangName = "Kannada";
+                        targetLangInstruction = "Write the patient summary ENTIRELY in simple, warm, everyday spoken Kannada (ಸರಳ ಆಡುಮಾತಿನ ಕನ್ನಡದಲ್ಲಿ). Absolutely no medical jargon.";
+                    } else if (currentSelectedLangCode === 'hi') {
+                        targetLangName = "Hindi";
+                        targetLangInstruction = "Write the patient summary ENTIRELY in simple, warm, everyday spoken Hindi (सरल बोलचाल की हिन्दी में). Absolutely no medical jargon.";
+                    }
+
+                    // Construct prompt with instructions for single selected summary language
                     let promptText = `You are an expert medical AI clinical diagnostic assistant. I am providing you with medical report images for complete text extraction and diagnostic analysis.
 
 IMPORTANT INSTRUCTIONS — READ CAREFULLY BEFORE RESPONDING:
 - Do NOT write introductions, greetings, or preambles.
-- You MUST produce ALL SECTIONS below, in order, using the EXACT tags shown.
-- Each section serves a DIFFERENT purpose — do not copy content from one into another.
+- You MUST produce ALL FOUR SECTIONS below, in order, using the EXACT tags shown.
 
 ==========================================================================
 SECTION 0: RAW EXTRACTED TEXT [EXTRACTED_TEXT_START] ... [EXTRACTED_TEXT_END]
@@ -2718,50 +2754,18 @@ Purpose: A precise, concise clinical document for doctors. Use tables and bullet
 ==========================================================================
 SECTION 2: NARRATIVE CLINICAL STORY [STORY_START] ... [STORY_END]
 ==========================================================================
-Purpose: A FLOWING NARRATIVE — written like a medical story, NOT a list. This section must be COMPLETELY DIFFERENT from Section 1.
+Purpose: A FLOWING NARRATIVE — written like a medical story, NOT a list.
 - Write continuous prose paragraphs (NO bullet points, NO tables).
-- Tell the story of this patient's health journey: why investigations were done, what was discovered, how findings connect to each other physiologically.
-- Use warm, engaging language — as if a senior doctor is telling a colleague the patient's story.
-- Highlight key abnormal findings naturally in the prose.
-- End with a forward-looking paragraph about next steps and prognosis.
+- Tell the story of this patient's health journey.
 
 ==========================================================================
-SECTION 3: ENGLISH PATIENT SUMMARY [ENGLISH_SUMMARY_START] ... [ENGLISH_SUMMARY_END]
+SECTION 3: PATIENT HEALTH SUMMARY IN ${targetLangName.toUpperCase()} [PATIENT_SUMMARY_START] ... [PATIENT_SUMMARY_END]
 ==========================================================================
-Purpose: A warm, deeply empathetic letter-style summary for the patient and their family in HIGHLY COLLOQUIAL, everyday conversational English — absolutely NO formal medical jargon. Speak like a friendly, caring family member who happens to be a doctor explaining things over a cup of tea.
-The summary MUST cover ALL of the following in flowing paragraphs (NOT bullet points):
-
-1. GREETING & EMPATHY: Begin by acknowledging the patient by name (if available). Say something comforting like "I know getting all these tests done can be super stressful..."
-
-2. WHAT WAS CHECKED: Explain in very simple, everyday words what body parts were checked. (e.g. "We took a good look at your blood, your heart, and how your liver and kidneys are doing...")
-
-3. WHAT THE REPORTS FOUND — NORMAL THINGS: Start with the good news! Tell them what's working perfectly to give them peace of mind.
-
-4. WHAT NEEDS ATTENTION: Gently explain the abnormal findings in regular, everyday words. For each concern, give a simple reason why it happens (e.g. "Your blood sugar is a bit high — this usually happens when the body gets a bit tired of processing sweets, often due to daily stress, the food we eat, or just runs in the family.")
-
-5. HOW SERIOUS IS IT?: Give them a gentle reality check. If it's something manageable, reassure them strongly (e.g. "Don't worry too much, a lot of people have this and live completely normal, happy lives with a little bit of care.")
-
-6. LIKELY FUTURE TREATMENTS: Suggest the most likely next steps the doctor will take in a friendly way (e.g. "Your doctor will probably give you some simple daily medicines and might ask you to take a nice 30-minute walk every day.")
-
-7. OPTIMISTIC CLOSING: End on a very bright, hopeful, and encouraging note. Remind them that they're in good hands.
+Purpose: ${targetLangInstruction}
+Cover: greeting & empathy, what body parts were checked, normal findings, abnormal findings explained simply, reality check, and optimistic closing.
 
 ==========================================================================
-SECTION 4: MARATHI PATIENT SUMMARY [MARATHI_SUMMARY_START] ... [MARATHI_SUMMARY_END]
-==========================================================================
-हे Section 3 चेच संपूर्ण भाषांतर व अनुकूलन आहे, पण पूर्णपणे अत्यंत साध्या, बोली आणि घरगुती मराठीत — जसे कुटुंबातील एखादा डॉक्टर सदस्य चहा पिताना समजावून सांगतो तसे. वैद्यकीय शब्द पूर्णपणे टाळा.
-
-==========================================================================
-SECTION 5: KANNADA PATIENT SUMMARY [KANNADA_SUMMARY_START] ... [KANNADA_SUMMARY_END]
-==========================================================================
-This is the complete translation and adaptation of Section 3 into highly colloquial, everyday, spoken Kannada. Use very simple, warm, and comforting Kannada, just like a caring family member explaining the reports. Avoid strict formal/literary Kannada and medical jargon entirely.
-
-==========================================================================
-SECTION 6: HINDI PATIENT SUMMARY [HINDI_SUMMARY_START] ... [HINDI_SUMMARY_END]
-==========================================================================
-This is the complete translation and adaptation of Section 3 into highly colloquial, everyday, spoken Hindi. Use very simple, warm, and comforting Hindi, just like a caring family member explaining the reports. Avoid strict formal/literary Hindi and medical jargon entirely.
-
-==========================================================================
-NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
+NOW GENERATE ALL FOUR SECTIONS BELOW IN ORDER:
 ==========================================================================
 
 [ANALYSIS_START]
@@ -2784,24 +2788,12 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
 [ANALYSIS_END]
 
 [STORY_START]
-[Write continuous narrative prose paragraphs here — NO bullet points, NO tables. Tell the patient's medical story in flowing language.]
+[Write continuous narrative prose paragraphs here.]
 [STORY_END]
 
-[ENGLISH_SUMMARY_START]
-[Write the detailed, warm, elaborate English patient summary covering all 7 points above in flowing paragraphs.]
-[ENGLISH_SUMMARY_END]
-
-[MARATHI_SUMMARY_START]
-[Write the detailed, warm, elaborate Marathi patient summary covering all 7 points above in flowing Marathi paragraphs.]
-[MARATHI_SUMMARY_END]
-
-[KANNADA_SUMMARY_START]
-[Write the detailed, warm, elaborate Kannada patient summary covering all 7 points above in flowing Kannada paragraphs.]
-[KANNADA_SUMMARY_END]
-
-[HINDI_SUMMARY_START]
-[Write the detailed, warm, elaborate Hindi patient summary covering all 7 points above in flowing Hindi paragraphs.]
-[HINDI_SUMMARY_END]
+[PATIENT_SUMMARY_START]
+[Write the detailed, warm patient summary in ${targetLangName} in flowing paragraphs.]
+[PATIENT_SUMMARY_END]
 `;
 
                     parts.push({ text: promptText });
@@ -2948,38 +2940,11 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                         ""
                     );
 
-                    const parsedEnglishSummary = parseSection(
+                    const parsedPatientSummary = parseSection(
                         textContent, 
-                        '[ENGLISH_SUMMARY_START]', 
-                        '[ENGLISH_SUMMARY_END]', 
-                        ["Your Friendly Health Summary", "English Summary", "Friendly Health Summary", "English Patient Summary"], 
-                        ["आरोग्य सारांश (मराठीत)", "आरोग्य सारांश", "Marathi Summary", "MARATHI_SUMMARY_START"], 
-                        ""
-                    );
-
-                    const parsedMarathiSummary = parseSection(
-                        textContent, 
-                        '[MARATHI_SUMMARY_START]', 
-                        '[MARATHI_SUMMARY_END]', 
-                        ["आरोग्य सारांश", "आपला आरोग्य सारांश", "आरोग्य सारांश (मराठीत)", "मराठीत सोपा सारांश", "मराठीत आरोग्य सारांश"], 
-                        ["KANNADA_SUMMARY_START"], 
-                        ""
-                    );
-
-                    const parsedKannadaSummary = parseSection(
-                        textContent, 
-                        '[KANNADA_SUMMARY_START]', 
-                        '[KANNADA_SUMMARY_END]', 
-                        ["ಆರೋಗ್ಯ ಸಾರಾಂಶ", "ಕನ್ನಡ ಸಾರಾಂಶ"], 
-                        ["HINDI_SUMMARY_START"], 
-                        ""
-                    );
-
-                    const parsedHindiSummary = parseSection(
-                        textContent, 
-                        '[HINDI_SUMMARY_START]', 
-                        '[HINDI_SUMMARY_END]', 
-                        ["स्वास्थ्य सारांश", "हिन्दी सारांश"], 
+                        '[PATIENT_SUMMARY_START]', 
+                        '[PATIENT_SUMMARY_END]', 
+                        ["PATIENT_SUMMARY_START", "Patient Summary", "Health Summary", "Summary"], 
                         [], 
                         ""
                     );
@@ -2994,27 +2959,12 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
 
                     let storyMarkup = parsedStory;
                     if (!storyMarkup || storyMarkup.trim().length < 50) {
-                        storyMarkup = "*⚠️ The clinical narrative story could not be generated. This usually means the AI hit its output limit while processing a very large report. Please try again — the results may vary on each attempt.*";
+                        storyMarkup = "*⚠️ The clinical narrative story could not be generated. Please try again.*";
                     }
 
-                    let englishSummaryMarkup = parsedEnglishSummary;
-                    if (!englishSummaryMarkup || englishSummaryMarkup.trim().length < 30) {
-                        englishSummaryMarkup = "*⚠️ The English patient summary could not be generated this time. The AI may have run out of output space processing a large report. Please try running the analysis again.*";
-                    }
-
-                    let marathiSummaryMarkup = parsedMarathiSummary;
-                    if (!marathiSummaryMarkup || marathiSummaryMarkup.trim().length < 30) {
-                        marathiSummaryMarkup = "*⚠️ मराठी सारांश तयार होऊ शकला नाही. पुन्हा एकदा 'Extract & Analyze' दाबा.*";
-                    }
-
-                    let kannadaSummaryMarkup = parsedKannadaSummary;
-                    if (!kannadaSummaryMarkup || kannadaSummaryMarkup.trim().length < 30) {
-                        kannadaSummaryMarkup = "*⚠️ ಕನ್ನಡ ಸಾರಾಂಶವನ್ನು ರಚಿಸಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.*";
-                    }
-
-                    let hindiSummaryMarkup = parsedHindiSummary;
-                    if (!hindiSummaryMarkup || hindiSummaryMarkup.trim().length < 30) {
-                        hindiSummaryMarkup = "*⚠️ स्वास्थ्य सारांश उत्पन्न नहीं हो सका। कृपया पुनः प्रयास करें।*";
+                    let patientSummaryMarkup = parsedPatientSummary;
+                    if (!patientSummaryMarkup || patientSummaryMarkup.trim().length < 30) {
+                        patientSummaryMarkup = textContent;
                     }
 
                     // Render to the columns
@@ -3028,13 +2978,25 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                     let storyHtmlContent = marked.parse(storyMarkup);
                     storyResult.innerHTML = storyHtmlContent;
 
-                    // Render to Summary Cards
-                    if (summaryCardEn) summaryCardEn.innerHTML = marked.parse(englishSummaryMarkup);
-                    if (summaryCardMr) summaryCardMr.innerHTML = marked.parse(marathiSummaryMarkup);
-                    if (summaryCardKn) summaryCardKn.innerHTML = marked.parse(kannadaSummaryMarkup);
-                    if (summaryCardHi) summaryCardHi.innerHTML = marked.parse(hindiSummaryMarkup);
+                    // Clear all summary cards
+                    if (summaryCardEn) summaryCardEn.innerHTML = '';
+                    if (summaryCardMr) summaryCardMr.innerHTML = '';
+                    if (summaryCardKn) summaryCardKn.innerHTML = '';
+                    if (summaryCardHi) summaryCardHi.innerHTML = '';
 
-                    analysisStatus.textContent = `Analysis complete (via ${selectedModel}). Switch tabs to view the Patient Story or Patient Summary!`;
+                    // Target the specific card corresponding to currentSelectedLangCode
+                    const targetCard = currentSelectedLangCode === 'mr' ? summaryCardMr :
+                                       currentSelectedLangCode === 'kn' ? summaryCardKn :
+                                       currentSelectedLangCode === 'hi' ? summaryCardHi : summaryCardEn;
+
+                    if (targetCard) {
+                        targetCard.innerHTML = marked.parse(patientSummaryMarkup);
+                    }
+
+                    // Ensure target card is visible and others hidden
+                    selectLanguageByCode(currentSelectedLangCode);
+
+                    analysisStatus.textContent = `Analysis complete in ${targetLangName}! Switch tabs to view the Patient Story or Patient Summary!`;
                     downloadActions.classList.remove('hidden');
 
                 } catch (error) {
