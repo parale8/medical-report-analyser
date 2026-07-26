@@ -2716,27 +2716,12 @@
                         }
                     }
 
-                    // Determine selected summary language
-                    let targetLangName = "English";
-                    let targetLangInstruction = "Write a warm, deeply empathetic letter-style summary for the patient and family in simple, everyday conversational English (no medical jargon).";
-                    
-                    if (currentSelectedLangCode === 'mr') {
-                        targetLangName = "Marathi";
-                        targetLangInstruction = "Write the patient summary ENTIRELY in simple, warm, everyday spoken Marathi (साध्या, घरगुती बोलक्या मराठीत). Absolutely no medical jargon.";
-                    } else if (currentSelectedLangCode === 'kn') {
-                        targetLangName = "Kannada";
-                        targetLangInstruction = "Write the patient summary ENTIRELY in simple, warm, everyday spoken Kannada (ಸರಳ ಆಡುಮಾತಿನ ಕನ್ನಡದಲ್ಲಿ). Absolutely no medical jargon.";
-                    } else if (currentSelectedLangCode === 'hi') {
-                        targetLangName = "Hindi";
-                        targetLangInstruction = "Write the patient summary ENTIRELY in simple, warm, everyday spoken Hindi (सरल बोलचाल की हिन्दी में). Absolutely no medical jargon.";
-                    }
-
-                    // Construct prompt with instructions for single selected summary language
+                    // Construct prompt with instructions for multi-language patient summaries (English, Marathi, Kannada, Hindi)
                     let promptText = `You are an expert medical AI clinical diagnostic assistant. I am providing you with medical report images for complete text extraction and diagnostic analysis.
 
 IMPORTANT INSTRUCTIONS — READ CAREFULLY BEFORE RESPONDING:
 - Do NOT write introductions, greetings, or preambles.
-- You MUST produce ALL FOUR SECTIONS below, in order, using the EXACT tags shown.
+- You MUST produce ALL SECTIONS below, in order, using the EXACT tags shown.
 
 ==========================================================================
 SECTION 0: RAW EXTRACTED TEXT [EXTRACTED_TEXT_START] ... [EXTRACTED_TEXT_END]
@@ -2759,13 +2744,27 @@ Purpose: A FLOWING NARRATIVE — written like a medical story, NOT a list.
 - Tell the story of this patient's health journey.
 
 ==========================================================================
-SECTION 3: PATIENT HEALTH SUMMARY IN ${targetLangName.toUpperCase()} [PATIENT_SUMMARY_START] ... [PATIENT_SUMMARY_END]
+SECTION 3: ENGLISH PATIENT SUMMARY [ENGLISH_SUMMARY_START] ... [ENGLISH_SUMMARY_END]
 ==========================================================================
-Purpose: ${targetLangInstruction}
-Cover: greeting & empathy, what body parts were checked, normal findings, abnormal findings explained simply, reality check, and optimistic closing.
+Purpose: A warm, concise 3-paragraph letter-style patient summary in simple conversational English (no medical jargon).
 
 ==========================================================================
-NOW GENERATE ALL FOUR SECTIONS BELOW IN ORDER:
+SECTION 4: MARATHI PATIENT SUMMARY [MARATHI_SUMMARY_START] ... [MARATHI_SUMMARY_END]
+==========================================================================
+Purpose: A warm, concise 3-paragraph letter-style patient summary in simple everyday spoken Marathi (साध्या बोली मराठीत).
+
+==========================================================================
+SECTION 5: KANNADA PATIENT SUMMARY [KANNADA_SUMMARY_START] ... [KANNADA_SUMMARY_END]
+==========================================================================
+Purpose: A warm, concise 3-paragraph letter-style patient summary in simple everyday spoken Kannada (ಸರಳ ಆಡುಮಾತಿನ ಕನ್ನಡದಲ್ಲಿ).
+
+==========================================================================
+SECTION 6: HINDI PATIENT SUMMARY [HINDI_SUMMARY_START] ... [HINDI_SUMMARY_END]
+==========================================================================
+Purpose: A warm, concise 3-paragraph letter-style patient summary in simple everyday spoken Hindi (सरल बोलचाल की हिन्दी में).
+
+==========================================================================
+NOW GENERATE ALL SECTIONS BELOW IN ORDER:
 ==========================================================================
 
 [ANALYSIS_START]
@@ -2791,9 +2790,21 @@ NOW GENERATE ALL FOUR SECTIONS BELOW IN ORDER:
 [Write continuous narrative prose paragraphs here.]
 [STORY_END]
 
-[PATIENT_SUMMARY_START]
-[Write the detailed, warm patient summary in ${targetLangName} in flowing paragraphs.]
-[PATIENT_SUMMARY_END]
+[ENGLISH_SUMMARY_START]
+[Write English patient summary here.]
+[ENGLISH_SUMMARY_END]
+
+[MARATHI_SUMMARY_START]
+[Write Marathi patient summary here.]
+[MARATHI_SUMMARY_END]
+
+[KANNADA_SUMMARY_START]
+[Write Kannada patient summary here.]
+[KANNADA_SUMMARY_END]
+
+[HINDI_SUMMARY_START]
+[Write Hindi patient summary here.]
+[HINDI_SUMMARY_END]
 `;
 
                     parts.push({ text: promptText });
@@ -2940,11 +2951,38 @@ NOW GENERATE ALL FOUR SECTIONS BELOW IN ORDER:
                         ""
                     );
 
-                    const parsedPatientSummary = parseSection(
+                    const parsedEnglishSummary = parseSection(
                         textContent, 
-                        '[PATIENT_SUMMARY_START]', 
-                        '[PATIENT_SUMMARY_END]', 
-                        ["PATIENT_SUMMARY_START", "Patient Summary", "Health Summary", "Summary"], 
+                        '[ENGLISH_SUMMARY_START]', 
+                        '[ENGLISH_SUMMARY_END]', 
+                        ["English Patient Summary", "English Summary", "Friendly Health Summary"], 
+                        ["MARATHI_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedMarathiSummary = parseSection(
+                        textContent, 
+                        '[MARATHI_SUMMARY_START]', 
+                        '[MARATHI_SUMMARY_END]', 
+                        ["Marathi Patient Summary", "Marathi Summary", "आरोग्य सारांश"], 
+                        ["KANNADA_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedKannadaSummary = parseSection(
+                        textContent, 
+                        '[KANNADA_SUMMARY_START]', 
+                        '[KANNADA_SUMMARY_END]', 
+                        ["Kannada Patient Summary", "Kannada Summary", "ಕನ್ನಡ ಸಾರಾಂಶ"], 
+                        ["HINDI_SUMMARY_START"], 
+                        ""
+                    );
+
+                    const parsedHindiSummary = parseSection(
+                        textContent, 
+                        '[HINDI_SUMMARY_START]', 
+                        '[HINDI_SUMMARY_END]', 
+                        ["Hindi Patient Summary", "Hindi Summary", "हिन्दी सारांश"], 
                         [], 
                         ""
                     );
@@ -2952,20 +2990,12 @@ NOW GENERATE ALL FOUR SECTIONS BELOW IN ORDER:
                     // Map extracted OCR text directly from Gemini 3.6 Multimodal Vision response
                     let ocrMarkup = parsedExtractedText || "No text extracted from the report images.";
 
-                    let analysisMarkup = parsedAnalysis;
-                    if (!analysisMarkup) {
-                        analysisMarkup = textContent;
-                    }
-
-                    let storyMarkup = parsedStory;
-                    if (!storyMarkup || storyMarkup.trim().length < 50) {
-                        storyMarkup = "*⚠️ The clinical narrative story could not be generated. Please try again.*";
-                    }
-
-                    let patientSummaryMarkup = parsedPatientSummary;
-                    if (!patientSummaryMarkup || patientSummaryMarkup.trim().length < 30) {
-                        patientSummaryMarkup = textContent;
-                    }
+                    let analysisMarkup = parsedAnalysis || textContent;
+                    let storyMarkup = parsedStory || "*⚠️ Story generation complete.*";
+                    let englishSummaryMarkup = parsedEnglishSummary || textContent;
+                    let marathiSummaryMarkup = parsedMarathiSummary || textContent;
+                    let kannadaSummaryMarkup = parsedKannadaSummary || textContent;
+                    let hindiSummaryMarkup = parsedHindiSummary || textContent;
 
                     // Render to the columns
                     ocrResult.innerHTML = marked.parse(ocrMarkup);
@@ -2978,25 +3008,16 @@ NOW GENERATE ALL FOUR SECTIONS BELOW IN ORDER:
                     let storyHtmlContent = marked.parse(storyMarkup);
                     storyResult.innerHTML = storyHtmlContent;
 
-                    // Clear all summary cards
-                    if (summaryCardEn) summaryCardEn.innerHTML = '';
-                    if (summaryCardMr) summaryCardMr.innerHTML = '';
-                    if (summaryCardKn) summaryCardKn.innerHTML = '';
-                    if (summaryCardHi) summaryCardHi.innerHTML = '';
-
-                    // Target the specific card corresponding to currentSelectedLangCode
-                    const targetCard = currentSelectedLangCode === 'mr' ? summaryCardMr :
-                                       currentSelectedLangCode === 'kn' ? summaryCardKn :
-                                       currentSelectedLangCode === 'hi' ? summaryCardHi : summaryCardEn;
-
-                    if (targetCard) {
-                        targetCard.innerHTML = marked.parse(patientSummaryMarkup);
-                    }
+                    // Render to Summary Cards for all languages
+                    if (summaryCardEn) summaryCardEn.innerHTML = marked.parse(englishSummaryMarkup);
+                    if (summaryCardMr) summaryCardMr.innerHTML = marked.parse(marathiSummaryMarkup);
+                    if (summaryCardKn) summaryCardKn.innerHTML = marked.parse(kannadaSummaryMarkup);
+                    if (summaryCardHi) summaryCardHi.innerHTML = marked.parse(hindiSummaryMarkup);
 
                     // Ensure target card is visible and others hidden
                     selectLanguageByCode(currentSelectedLangCode);
 
-                    analysisStatus.textContent = `Analysis complete in ${targetLangName}! Switch tabs to view the Patient Story or Patient Summary!`;
+                    analysisStatus.textContent = `Analysis complete (via ${selectedModel})! Switch tabs to view Clinical Story or Patient Summary in English, Marathi, Kannada, or Hindi!`;
                     downloadActions.classList.remove('hidden');
 
                 } catch (error) {
