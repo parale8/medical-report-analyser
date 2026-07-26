@@ -1868,14 +1868,22 @@
             }
 
             function fileToBase64(file) {
-                return new Promise((resolve, reject) => {
+                return new Promise(async (resolve, reject) => {
+                    let targetFile = file;
+                    try {
+                        if (file && (file.type ? file.type.startsWith('image/') : true) && typeof compressImage === 'function') {
+                            targetFile = await compressImage(file, 1600, 0.85);
+                        }
+                    } catch (e) {
+                        console.warn("Fast compress fallback:", e);
+                    }
                     const reader = new FileReader();
                     reader.onload = () => {
                         const base64String = reader.result.split(',')[1];
                         resolve(base64String);
                     };
                     reader.onerror = (error) => reject(error);
-                    reader.readAsDataURL(file);
+                    reader.readAsDataURL(targetFile);
                 });
             }
 
@@ -2839,9 +2847,9 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                                     body: JSON.stringify({
                                         contents: [{ parts: parts }],
                                         generationConfig: {
-                                            temperature: 0.15,
+                                            temperature: 0.1,
                                             topP: 0.85,
-                                            maxOutputTokens: 65536
+                                            maxOutputTokens: 8192
                                         }
                                     })
                                 });
