@@ -2051,14 +2051,14 @@
                 storyContent.classList.remove('hidden'); // Ensure visible in clone
                 cloneContainer.appendChild(storyContent);
 
-                // Add Page Break & Patient-Friendly Summaries (English & Marathi)
+                // Add Page Break & Selected Patient-Friendly Summary
                 const summaryPageBreak = document.createElement('div');
                 summaryPageBreak.style.pageBreakBefore = 'always';
                 summaryPageBreak.style.marginTop = '40px';
                 cloneContainer.appendChild(summaryPageBreak);
 
                 const summaryTitle = document.createElement('h2');
-                summaryTitle.textContent = "III. PATIENT-FRIENDLY HEALTH SUMMARIES";
+                summaryTitle.textContent = "III. PATIENT-FRIENDLY HEALTH SUMMARY";
                 summaryTitle.style.color = '#8b5cf6'; // premium violet
                 summaryTitle.style.fontSize = '1.4rem';
                 summaryTitle.style.borderBottom = '1px solid rgba(255, 255, 255, 0.1)';
@@ -2067,41 +2067,38 @@
                 summaryTitle.style.marginBottom = '15px';
                 cloneContainer.appendChild(summaryTitle);
 
-                // English summary block
-                const enSummaryHeader = document.createElement('h3');
-                enSummaryHeader.textContent = "🇬🇧 Patient Friendly Summary (English)";
-                enSummaryHeader.style.color = '#3b82f6';
-                enSummaryHeader.style.fontSize = '1.1rem';
-                enSummaryHeader.style.marginTop = '15px';
-                enSummaryHeader.style.marginBottom = '10px';
-                cloneContainer.appendChild(enSummaryHeader);
+                // Export ONLY the currently selected summary language (English / Marathi / Kannada / Hindi)
+                const langCards = [
+                    { id: 'summaryCardEn', title: '🇬🇧 Patient Friendly Summary (English)', color: '#3b82f6' },
+                    { id: 'summaryCardMr', title: '🚩 आपला आरोग्य सारांश (Marathi Summary)', color: '#8b5cf6' },
+                    { id: 'summaryCardKn', title: '🟡 ರೋಗಿಯ ಆರೋಗ್ಯ ಸಾರಾಂಶ (Kannada Summary)', color: '#f59e0b' },
+                    { id: 'summaryCardHi', title: '🇮🇳 स्वास्थ्य सारांश (Hindi Summary)', color: '#ec4899' }
+                ];
 
-                const enSummaryContent = document.getElementById('summaryCardEn').cloneNode(true);
-                enSummaryContent.style.height = 'auto';
-                enSummaryContent.style.overflow = 'visible';
-                enSummaryContent.style.maxHeight = 'none';
-                enSummaryContent.style.background = 'transparent';
-                enSummaryContent.style.padding = '0';
-                enSummaryContent.classList.remove('hidden');
-                cloneContainer.appendChild(enSummaryContent);
+                let selectedLangObj = langCards.find(item => {
+                    const el = document.getElementById(item.id);
+                    return el && !el.classList.contains('hidden');
+                }) || langCards[0];
 
-                // Marathi summary block
-                const mrSummaryHeader = document.createElement('h3');
-                mrSummaryHeader.textContent = "🚩 आपला आरोग्य सारांश (Marathi Summary)";
-                mrSummaryHeader.style.color = '#8b5cf6';
-                mrSummaryHeader.style.fontSize = '1.1rem';
-                mrSummaryHeader.style.marginTop = '25px';
-                mrSummaryHeader.style.marginBottom = '10px';
-                cloneContainer.appendChild(mrSummaryHeader);
+                const activeEl = document.getElementById(selectedLangObj.id);
+                if (activeEl) {
+                    const langHeader = document.createElement('h3');
+                    langHeader.textContent = selectedLangObj.title;
+                    langHeader.style.color = selectedLangObj.color;
+                    langHeader.style.fontSize = '1.1rem';
+                    langHeader.style.marginTop = '15px';
+                    langHeader.style.marginBottom = '10px';
+                    cloneContainer.appendChild(langHeader);
 
-                const mrSummaryContent = document.getElementById('summaryCardMr').cloneNode(true);
-                mrSummaryContent.style.height = 'auto';
-                mrSummaryContent.style.overflow = 'visible';
-                mrSummaryContent.style.maxHeight = 'none';
-                mrSummaryContent.style.background = 'transparent';
-                mrSummaryContent.style.padding = '0';
-                mrSummaryContent.classList.remove('hidden');
-                cloneContainer.appendChild(mrSummaryContent);
+                    const langContent = activeEl.cloneNode(true);
+                    langContent.style.height = 'auto';
+                    langContent.style.overflow = 'visible';
+                    langContent.style.maxHeight = 'none';
+                    langContent.style.background = 'transparent';
+                    langContent.style.padding = '0';
+                    langContent.classList.remove('hidden');
+                    cloneContainer.appendChild(langContent);
+                }
 
                 // Add explicit borders to tables in the clone so they render properly in Word and PDF
                 const tables = cloneContainer.querySelectorAll('table');
@@ -2647,56 +2644,21 @@
                 if (summaryCardKn) summaryCardKn.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
                 if (summaryCardHi) summaryCardHi.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>';
                 selectStructuredTab();
-                analysisStatus.textContent = `Extracting & analyzing ${currentFiles.length} pages via Gemini 2.5 (using ${usingCustomKey ? 'custom override API key' : 'default API key'})...`;
+                analysisStatus.textContent = `Extracting & analyzing ${currentFiles.length} pages via Gemini 3.6 Vision AI...`;
                 pulseIndicator.classList.add('analyzing');
 
                 try {
-                    // Step 1: OCR Extraction using Tesseract.js
-                    let combinedExtractedText = "";
-                    let tesseractSucceeded = false;
-
-                    try {
-                        if (typeof Tesseract === 'undefined') {
-                            throw new Error("Tesseract library is not loaded.");
-                        }
-                        
-                        analysisStatus.textContent = `Initializing local OCR engine...`;
-                        const worker = await Tesseract.createWorker('eng');
-
-                        ocrResult.innerHTML = ''; // clear loader
-
-                        for (let i = 0; i < currentFiles.length; i++) {
-                            analysisStatus.textContent = `Extracting text with local OCR (Page ${i + 1} of ${currentFiles.length})...`;
-                            const ret = await worker.recognize(currentFiles[i]);
-                            combinedExtractedText += `\n--- PAGE ${i + 1} ---\n\n`;
-                            combinedExtractedText += ret.data.text;
-                            combinedExtractedText += `\n\n`;
-
-                            // Show progressive results
-                            const pageResult = document.createElement('div');
-                            pageResult.innerHTML = `<strong>Page ${i + 1}:</strong><br/>${ret.data.text.replace(/\n/g, '<br/>')}<hr/>`;
-                            ocrResult.appendChild(pageResult);
-                        }
-
-                        await worker.terminate();
-                        tesseractSucceeded = true;
-                    } catch (tessErr) {
-                        console.warn("Tesseract.js OCR failed or was blocked by browser sandbox/CSP:", tessErr);
-                        analysisStatus.textContent = `⚠️ Local OCR engine blocked/failed. Falling back to Gemini Vision OCR...`;
-                        ocrResult.innerHTML = `<div style="padding: 1rem; border-radius: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #fbbf24; font-size: 0.9rem; margin-bottom: 1rem;">⚠️ Local OCR engine is restricted by browser sandbox/CSP. Using Gemini Vision OCR as a backup.</div><div style="display:flex; justify-content:center; align-items:center; height:100%;"><span class="loader"></span></div>`;
-                    }
-
-                    // Step 2: Prepare inputs for Gemini API
-                    analyzeBtn.querySelector('.btn-text').textContent = 'Analyzing Reports...';
-                    analysisStatus.textContent = 'Preparing medical files and prompt for AI analysis...';
+                    // Step 1: Prepare image inputs directly for Gemini 3.6 Multimodal Vision OCR
+                    analyzeBtn.querySelector('.btn-text').textContent = '⚡ Extracting & Analyzing...';
+                    analysisStatus.textContent = `Preparing ${currentFiles.length} pages for Gemini Vision AI...`;
                     pulseIndicator.classList.add('analyzing');
 
                     const parts = [];
 
-                    // Convert all uploaded medical report images to Base64 and add to parts array
+                    // Convert uploaded medical report images to Base64 and add to parts array
                     for (let i = 0; i < currentFiles.length; i++) {
                         try {
-                            analysisStatus.textContent = `Converting page ${i + 1} to secure data...`;
+                            analysisStatus.textContent = `Processing page ${i + 1} of ${currentFiles.length}...`;
                             const base64Data = await fileToBase64(currentFiles[i]);
                             let rawType = (currentFiles[i].type || "image/jpeg").toLowerCase();
                             if (rawType === "image/jpg" || rawType === "image/pjpeg") rawType = "image/jpeg";
@@ -2714,19 +2676,18 @@
                         }
                     }
 
-                    // Construct prompt
-                    let promptText = `You are an expert medical AI clinical diagnostic assistant. I am providing you with the medical report images ${tesseractSucceeded ? 'along with the raw OCR-extracted text' : 'for you to analyze'}.\n\n`;
+                    // Construct prompt with instructions to produce Extracted OCR Text + Analysis + Story + Patient Summaries
+                    let promptText = `You are an expert medical AI clinical diagnostic assistant. I am providing you with medical report images for complete text extraction and diagnostic analysis.
 
-                    if (tesseractSucceeded && combinedExtractedText.trim()) {
-                        promptText += `Here is the raw OCR-extracted text of the multi-page medical report:\n"""\n${combinedExtractedText}\n"""\n\n`;
-                    }
-
-                    promptText += `
 IMPORTANT INSTRUCTIONS — READ CAREFULLY BEFORE RESPONDING:
 - Do NOT write introductions, greetings, or preambles.
-- Do NOT repeat or transcribe the raw OCR text.
-- You MUST produce ALL FOUR sections below, in order, using the EXACT tags shown.
+- You MUST produce ALL SECTIONS below, in order, using the EXACT tags shown.
 - Each section serves a DIFFERENT purpose — do not copy content from one into another.
+
+==========================================================================
+SECTION 0: RAW EXTRACTED TEXT [EXTRACTED_TEXT_START] ... [EXTRACTED_TEXT_END]
+==========================================================================
+Extract all visible text from the medical report images accurately, maintaining line breaks and section headers.
 
 ==========================================================================
 SECTION 1: STRUCTURED CLINICAL ANALYSIS [ANALYSIS_START] ... [ANALYSIS_END]
@@ -3005,11 +2966,8 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                         ""
                     );
 
-                    // Map directly to client-side local OCR text for perfect reliability, falling back to Gemini's parsed OCR if Tesseract failed
-                    let ocrMarkup = tesseractSucceeded ? combinedExtractedText : parsedExtractedText;
-                    if (!ocrMarkup || ocrMarkup.trim().length === 0) {
-                        ocrMarkup = parsedExtractedText || combinedExtractedText || "No text extracted from the report images.";
-                    }
+                    // Map extracted OCR text directly from Gemini 3.6 Multimodal Vision response
+                    let ocrMarkup = parsedExtractedText || "No text extracted from the report images.";
 
                     let analysisMarkup = parsedAnalysis;
                     if (!analysisMarkup) {
