@@ -1251,7 +1251,13 @@
                 // 2. Standard Local Storage
                 try {
                     const val = localStorage.getItem(key);
-                    if (val !== null) return val;
+                    if (val !== null) {
+                        if (val === "AQ.Ab8RN6KviBoA18p_HHAW-wYHqdPe6vBX4XrGJDH3atXBVlpuoA") {
+                            localStorage.removeItem(key);
+                        } else {
+                            return val;
+                        }
+                    }
                 } catch (e) {
                     console.warn("localStorage.getItem is blocked, trying fallbacks:", e);
                 }
@@ -2912,11 +2918,12 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                             }
                         }
                         if (isKeyInvalid) {
+                            safeStorage.removeItem('mediscan_gemini_api_key');
                             if (keyStatus) {
-                                keyStatus.innerHTML = `❌ <strong>API Key Invalid or Revoked:</strong> The entered key is not valid for Google Gemini. Please get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">Google AI Studio</a> and paste it above!`;
+                                keyStatus.innerHTML = `❌ <strong>API Key Invalid or Revoked:</strong> The saved key was invalid. Cleared saved key to use new default key. Please try again! (<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: underline;">Google AI Studio</a>)`;
                                 keyStatus.style.color = "var(--danger-color)";
                             }
-                            throw new Error('❌ The Gemini API key is invalid or has been revoked (HTTP 401/403). Please enter a valid free Gemini API key from Google AI Studio in the settings panel above.');
+                            throw new Error('❌ The saved Gemini API key was invalid or revoked. It has been cleared. Please tap "Done! Extract & Analyze" again!');
                         }
                         if (isRateLimited) {
                             if (keyStatus) {
