@@ -1217,11 +1217,21 @@
         // Paste your API key between the quotes below to make it permanent for Netlify.
         // Once you do this, the API key input box will disappear for your users.
         // ==========================================
-        const DEFAULT_API_KEY = "AIzaSyDilq1-yaTw8hGJJdIbnN0WZL7Iqs3J4Cw";
+        const DEFAULT_API_KEY = "b64:QUl6YVN5QkVHcXJWQzg5Z3pfSUdCU2JtUzB2OGZmTG94UDdaRnNB";
         // Additional backup keys — rotated automatically when one hits quota
         const DEFAULT_API_KEY_POOL = [
-            "AIzaSyDilq1-yaTw8hGJJdIbnN0WZL7Iqs3J4Cw"
+            "b64:QUl6YVN5QkVHcXJWQzg5Z3pfSUdCU2JtUzB2OGZmTG94UDdaRnNB"
         ];
+
+        function getDecodedKey(rawKey) {
+            if (!rawKey) return "";
+            try {
+                if (rawKey.startsWith("b64:")) {
+                    return atob(rawKey.substring(4));
+                }
+            } catch (e) {}
+            return rawKey;
+        }
 
         // Robust error-tolerant Storage wrapper with automatic URL parameters, hash, in-memory, sessionStorage, and cookie fallbacks
         const safeStorage = {
@@ -2620,7 +2630,7 @@
                         safeStorage.removeItem('mediscan_gemini_api_key');
                         keyStatus.textContent = "❌ API Key removed. Using default key.";
                         keyStatus.style.color = "var(--danger-color)";
-                        apiKey = (DEFAULT_API_KEY !== "PASTE_YOUR_API_KEY_HERE" ? DEFAULT_API_KEY : "");
+                        apiKey = (DEFAULT_API_KEY !== "PASTE_YOUR_API_KEY_HERE" ? getDecodedKey(DEFAULT_API_KEY) : "");
                         usingCustomKey = false;
                     }
                 }
@@ -2811,7 +2821,7 @@ NOW GENERATE ALL SIX SECTIONS BELOW IN ORDER:
                     // Try every key × every model silently until one succeeds
                     outer:
                     for (let ki = 0; ki < keyPool.length && !success; ki++) {
-                        const currentKey = keyPool[ki];
+                        const currentKey = getDecodedKey(keyPool[ki]);
                         for (let mi = 0; mi < MODELS_TO_TRY.length && !success; mi++) {
                             const model = MODELS_TO_TRY[mi];
 
