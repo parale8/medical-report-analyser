@@ -1039,15 +1039,15 @@
 
                     <div class="upload-buttons">
                         <div class="upload-btn-wrapper">
-                            <button id="takePhotoBtn" class="btn-primary" style="width: 100%;">📸 Take Photo</button>
+                            <button id="takePhotoBtn" type="button" class="btn-primary" style="width: 100%;">📸 Take Photo</button>
                             <input type="file" id="cameraInput" accept="image/*" capture="environment">
                         </div>
                         <div class="upload-btn-wrapper">
-                            <button class="btn-secondary" style="width: 100%;">📁 Browse Files</button>
+                            <button type="button" class="btn-secondary" style="width: 100%;">📁 Browse Files</button>
                             <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
                         </div>
                         <div class="upload-btn-wrapper electron-only" style="display: none; width: 100%; margin-top: 0.5rem;">
-                            <button id="openScannerBtn" class="btn-primary" style="width: 100%; background: #f59e0b; color: white;">🖨️ Open Native Scanner App</button>
+                            <button id="openScannerBtn" type="button" class="btn-primary" style="width: 100%; background: #f59e0b; color: white;">🖨️ Open Native Scanner App</button>
                         </div>
                     </div>
                     <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1rem; text-align: center;">
@@ -1061,15 +1061,15 @@
                 <div id="addMoreBtnContainer" class="hidden"
                     style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; justify-content: center; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
                     <div class="upload-btn-wrapper">
-                        <button id="addTakePhotoBtn" class="btn-primary" style="width: 100%; font-size: 1.1rem; padding: 1rem;">📸 Take
+                        <button id="addTakePhotoBtn" type="button" class="btn-primary" style="width: 100%; font-size: 1.1rem; padding: 1rem;">📸 Take
                             Another Photo</button>
                         <input type="file" id="addCameraInput" accept="image/*" capture="environment">
                     </div>
                     <div class="upload-btn-wrapper">
-                        <button class="btn-secondary" style="width: 100%;">📁 Browse More Files</button>
+                        <button type="button" class="btn-secondary" style="width: 100%;">📁 Browse More Files</button>
                         <input type="file" id="addFileInput" accept="image/*,application/pdf" multiple>
                     </div>
-                    <button id="clearGalleryBtn" class="btn-secondary"
+                    <button id="clearGalleryBtn" type="button" class="btn-secondary"
                         style="width: 100%; border-color: var(--danger-color); color: var(--danger-color); padding: 0.8rem; cursor: pointer; border-radius: 8px; font-weight: 600; background: transparent;">🧹
                         Clear & Start Over</button>
                 </div>
@@ -1085,7 +1085,7 @@
                         <button id="mainLangHi" type="button" class="main-lang-btn" data-lang="hi" style="border: none; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 0.85rem; cursor: pointer; background: transparent; color: var(--text-secondary); flex-grow: 1;">🇮🇳 हिन्दी</button>
                     </div>
                 </div>
-                <button id="analyzeBtn" class="btn-primary"
+                <button id="analyzeBtn" type="button" class="btn-primary"
                     style="width: 100%; max-width: 400px; font-size: 1.2rem; padding: 1rem; background: var(--accent-color); border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 0.5rem; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);">
                     <span class="btn-text">✅ Done! Extract & Analyze</span>
                     <span class="loader hidden"></span>
@@ -1730,11 +1730,22 @@
 
             function closeCameraModal() {
                 if (cameraStream) {
-                    cameraStream.getTracks().forEach(t => t.stop());
+                    cameraStream.getTracks().forEach(t => {
+                        try { t.stop(); } catch (e) {}
+                    });
                     cameraStream = null;
                 }
                 if (cameraVideo) {
+                    cameraVideo.pause();
                     cameraVideo.srcObject = null;
+                }
+                if (cameraCapturedImg && cameraCapturedImg.src) {
+                    try { URL.revokeObjectURL(cameraCapturedImg.src); } catch (e) {}
+                    cameraCapturedImg.src = '';
+                }
+                if (cameraCanvas) {
+                    cameraCanvas.width = 1;
+                    cameraCanvas.height = 1;
                 }
                 if (cameraModal) {
                     cameraModal.classList.add('hidden');
@@ -1745,14 +1756,16 @@
             if (closeCameraBtn) closeCameraBtn.addEventListener('click', closeCameraModal);
 
             if (switchCameraBtn) {
-                switchCameraBtn.addEventListener('click', () => {
+                switchCameraBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
                     openCameraModal(activeFallbackInput);
                 });
             }
 
             if (fallbackFileInputBtn) {
-                fallbackFileInputBtn.addEventListener('click', () => {
+                fallbackFileInputBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     closeCameraModal();
                     if (activeFallbackInput) activeFallbackInput.click();
                     else if (fileInput) fileInput.click();
@@ -1760,7 +1773,8 @@
             }
 
             if (snapPhotoBtn) {
-                snapPhotoBtn.addEventListener('click', () => {
+                snapPhotoBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     if (!cameraVideo || !cameraVideo.videoWidth) return;
                     
                     cameraCanvas.width = cameraVideo.videoWidth;
@@ -1774,17 +1788,24 @@
                     cameraCanvas.toBlob((blob) => {
                         if (!blob) return;
                         capturedBlob = blob;
+                        if (cameraCapturedImg.src) {
+                            try { URL.revokeObjectURL(cameraCapturedImg.src); } catch(e) {}
+                        }
                         cameraCapturedImg.src = URL.createObjectURL(blob);
                         cameraPreviewContainer.classList.remove('hidden');
                         liveControls.classList.add('hidden');
                         confirmControls.classList.remove('hidden');
-                    }, 'image/jpeg', 0.90);
+                    }, 'image/jpeg', 0.85);
                 });
             }
 
             if (retakePhotoBtn) {
-                retakePhotoBtn.addEventListener('click', () => {
-                    if (cameraCapturedImg.src) URL.revokeObjectURL(cameraCapturedImg.src);
+                retakePhotoBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (cameraCapturedImg.src) {
+                        try { URL.revokeObjectURL(cameraCapturedImg.src); } catch(e) {}
+                        cameraCapturedImg.src = '';
+                    }
                     capturedBlob = null;
                     cameraPreviewContainer.classList.add('hidden');
                     confirmControls.classList.add('hidden');
@@ -1793,7 +1814,8 @@
             }
 
             if (usePhotoBtn) {
-                usePhotoBtn.addEventListener('click', () => {
+                usePhotoBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
                     if (!capturedBlob) return;
                     const photoFile = new File([capturedBlob], `camera_photo_${Date.now()}.jpg`, {
                         type: 'image/jpeg',
@@ -1840,17 +1862,21 @@
                 if (!input) return;
                 input.addEventListener('change', (e) => {
                     if (e.target.files && e.target.files.length > 0) {
-                        handleFiles(e.target.files);
+                        const selectedFiles = Array.from(e.target.files);
+                        e.target.value = ''; // Reset file input so subsequent photo snaps trigger change event cleanly
+                        handleFiles(selectedFiles);
                     }
                 });
             });
 
-            async function compressImage(file, maxDimension = 1200, quality = 0.70) {
+            async function compressImage(file, maxDimension = 1400, quality = 0.80) {
+                if (file && file._isCompressed) return file;
                 return new Promise((resolve, reject) => {
                     const img = new Image();
-                    img.src = URL.createObjectURL(file);
+                    const objectUrl = URL.createObjectURL(file);
+                    img.src = objectUrl;
                     img.onload = () => {
-                        URL.revokeObjectURL(img.src);
+                        URL.revokeObjectURL(objectUrl);
                         let width = img.width;
                         let height = img.height;
 
@@ -1872,19 +1898,20 @@
 
                         canvas.toBlob((blob) => {
                             if (!blob) {
-                                reject(new Error("Canvas compression failed"));
+                                resolve(file);
                                 return;
                             }
                             const compressedFile = new File([blob], file.name, {
                                 type: "image/jpeg",
                                 lastModified: Date.now()
                             });
+                            compressedFile._isCompressed = true;
                             resolve(compressedFile);
                         }, "image/jpeg", quality);
                     };
                     img.onerror = (err) => {
-                        URL.revokeObjectURL(img.src);
-                        reject(err);
+                        URL.revokeObjectURL(objectUrl);
+                        resolve(file);
                     };
                 });
             }
@@ -1893,8 +1920,8 @@
                 return new Promise(async (resolve, reject) => {
                     let targetFile = file;
                     try {
-                        if (file && (file.type ? file.type.startsWith('image/') : true) && typeof compressImage === 'function') {
-                            targetFile = await compressImage(file, 1600, 0.85);
+                        if (file && (file.type ? file.type.startsWith('image/') : true) && !file._isCompressed && typeof compressImage === 'function') {
+                            targetFile = await compressImage(file, 1400, 0.80);
                         }
                     } catch (e) {
                         console.warn("Fast compress fallback:", e);
@@ -1910,15 +1937,16 @@
             }
 
             async function handleFiles(files) {
+                if (!files || files.length === 0) return;
                 let added = false;
                 
-                // Show progressive compression states in the UI to keep user informed
                 analyzeBtn.disabled = true;
                 const originalBtnText = analyzeBtn.querySelector('.btn-text').textContent;
-                analyzeBtn.querySelector('.btn-text').textContent = '⚡ Optimizing Snaps...';
+                analyzeBtn.querySelector('.btn-text').textContent = '⚡ Processing Snaps...';
 
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
+                const fileArray = Array.from(files);
+                
+                const processTasks = fileArray.map(async (file) => {
                     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
                     const isImg = (file.type && file.type.startsWith('image/')) || 
                                   /\.(jpe?g|png|webp|heic|heif|bmp|tiff|gif)$/i.test(file.name) || 
@@ -1926,59 +1954,65 @@
 
                     if (isImg) {
                         try {
-                            const compressed = await compressImage(file, 1600, 0.85);
-                            currentFiles.push(compressed);
-                            added = true;
+                            const compressed = await compressImage(file, 1400, 0.80);
+                            return [compressed];
                         } catch (e) {
-                            console.error("Compression fallback:", e);
-                            currentFiles.push(file);
-                            added = true;
+                            return [file];
                         }
                     } else if (isPdf) {
                         try {
-                            analyzeBtn.querySelector('.btn-text').textContent = '📄 Extracting PDF Pages...';
                             const arrayBuffer = await file.arrayBuffer();
                             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                            
+                            const pageFiles = [];
+
                             for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                                analyzeBtn.querySelector('.btn-text').textContent = `📄 Extracting PDF Page ${pageNum} of ${pdf.numPages}...`;
                                 const page = await pdf.getPage(pageNum);
-                                const viewport = page.getViewport({ scale: 2.0 }); // High resolution for OCR
-                                
+                                const viewport = page.getViewport({ scale: 1.5 });
                                 const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
                                 canvas.width = viewport.width;
                                 canvas.height = viewport.height;
-                                
+                                const ctx = canvas.getContext('2d');
                                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                                
-                                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-                                const pageFile = new File([blob], `${file.name.replace('.pdf', '')}_page${pageNum}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
-                                
-                                const compressed = await compressImage(pageFile, 1600, 0.85);
-                                currentFiles.push(compressed);
-                                added = true;
+
+                                const pageBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.80));
+                                canvas.width = 1; canvas.height = 1; // Release memory
+                                if (pageBlob) {
+                                    const pageFile = new File([pageBlob], `${file.name.replace('.pdf', '')}_page_${pageNum}.jpg`, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now()
+                                    });
+                                    pageFile._isCompressed = true;
+                                    pageFiles.push(pageFile);
+                                }
                             }
-                        } catch (e) {
-                            console.error("PDF processing error:", e);
-                            alert(`Failed to process PDF "${file.name}".`);
+                            return pageFiles;
+                        } catch (pdfErr) {
+                            console.error("PDF processing error:", pdfErr);
+                            return [file];
                         }
-                    } else {
-                        alert(`File "${file.name}" is not an image or PDF and was skipped.`);
                     }
+                    return [file];
+                });
+
+                try {
+                    const results = await Promise.all(processTasks);
+                    results.forEach(fileList => {
+                        if (fileList && fileList.length > 0) {
+                            fileList.forEach(f => {
+                                currentFiles.push(f);
+                                added = true;
+                            });
+                        }
+                    });
+                } catch (err) {
+                    console.error("Error processing files:", err);
                 }
 
                 analyzeBtn.disabled = false;
-                analyzeBtn.querySelector('.btn-text').textContent = originalBtnText;
+                analyzeBtn.querySelector('.btn-text').textContent = '✅ Done! Extract & Analyze';
 
                 if (added) {
                     renderGallery();
-
-                    // Reset analyze button text if it was changed during error
-                    analyzeBtn.disabled = false;
-                    analyzeBtn.querySelector('.btn-text').textContent = '✅ Done! Extract & Analyze';
-
-                    // Reset results area to beautiful placeholders
                     restoreEmptyPlaceholders();
                 }
 
